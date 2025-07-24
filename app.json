@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "cannaplan",
+    "slug": "cannaplan",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/splash_screen.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash_screen.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#a2cb95"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kast0r.cannaplan"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.kast0r.cannaplan"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "owner": "kast0r",
+    "extra": {
+      "eas": {
+        "projectId": "ada71fcd-4b6a-4098-ab5d-695f0ea235d8"
+      }
+    }
+  }
+}

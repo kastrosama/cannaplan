@@ -1,0 +1,42 @@
+# EAS Build Ignore File
+# Tells Expo which files/folders NOT to upload during remote builds
+
+# Dependency caches and lock files
+node_modules
+.pnpm-store
+package-lock.json
+yarn.lock
+
+# Expo and Metro caches
+.expo
+.expo-shared
+.cache
+dist
+web-build
+
+# OS and editor cruft
+.DS_Store
+*.log
+*.swp
+.vscode
+.idea
+
+# Build artifacts
+android/
+ios/
+android/app/build
+ios/build
+build
+output
+
+# Test and backup files
+__tests__/
+tests/
+*.bak
+*.tmp
+*.old
+
+# Unused or heavy asset folders (customize if needed)
+assets/screenshots/
+assets/old/
+assets/unused/
