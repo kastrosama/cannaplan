@@ -1,164 +1,52 @@
+// SelectNutrientsScreen.js — step 1 of a new grow: pick the nutrient brand.
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image, Dimensions } from 'react-native';
-import { useFonts } from 'expo-font';
+import { View, Image, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-const { width: screenWidth } = Dimensions.get('window');
-const dynamicFontSize = Math.min(Math.round(screenWidth * 0.11), 42);
+import { useTheme, useStyles, space, radius } from '../theme/theme';
+import { Screen, Header, Card, T } from '../components/ui';
+import { BRANDS } from '../utils/brands';
 
 export default function SelectNutrientsScreen({ navigation }) {
-  const [fontsLoaded] = useFonts({
-    'LemonMilk': require('../assets/fonts/LEMONMILK-Medium.otf'),
-    'LemonMilkLight': require('../assets/fonts/LEMONMILK-Light.otf'),
-  });
-
-  if (!fontsLoaded) return null;
+  const { theme } = useTheme();
+  const s = useStyles(makeStyles);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topContent}>
-        <Text style={[styles.title, { fontSize: dynamicFontSize }]}>CANNAPLAN</Text>
-        <Text style={styles.subtitle}>Choose Your Nutrients</Text>
+    <Screen header={<Header title="New grow" subtitle="Step 1 of 2 · Choose your nutrients" />}>
+      {BRANDS.map((b) => (
+        <Card key={b.id} onPress={() => navigation.navigate(b.route)} style={s.row}>
+          <View style={s.logoTile}>
+            <Image source={b.logo} style={s.logo} resizeMode="contain" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <T variant="heading">{b.name}</T>
+            <T variant="small" style={{ marginTop: 3 }}>{b.tagline}</T>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={theme.textFaint} />
+        </Card>
+      ))}
 
-        {/* First Row */}
-        <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={styles.brandButtonBox}
-            onPress={() => navigation.navigate('Create Grow BioBizz')}
-          >
-            <Image source={require('../assets/nutrienticons/biobizz.jpeg')} style={styles.logo} resizeMode="contain" />
-            <Text style={styles.brandLabel}>BioBizz</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.brandButtonBox}
-            onPress={() => navigation.navigate('Create Grow DutchPro')}
-          >
-            <Image source={require('../assets/nutrienticons/dutchpro.jpeg')} style={styles.logo} resizeMode="contain" />
-            <Text style={styles.brandLabel}>Dutch Pro</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Second Row */}
-        <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={styles.brandButtonBox}
-            onPress={() => navigation.navigate('Create Grow AdvancedNutrients')}
-          >
-            <Image source={require('../assets/nutrienticons/advancednutrients.jpg')} style={styles.logo} resizeMode="contain" />
-            <Text style={styles.brandLabel}>Advanced Nutrients</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.brandButtonBox}
-            onPress={() => navigation.navigate('Create Grow CANNA')}
-          >
-            <Image source={require('../assets/nutrienticons/canna.jpg')} style={styles.logo} resizeMode="contain" />
-            <Text style={styles.brandLabel}>CANNA</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Third Row */}
-        <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={styles.brandButtonBox}
-            onPress={() => navigation.navigate('Create Grow GeneralHydroponics')}
-          >
-            <Image source={require('../assets/nutrienticons/generalhydroponics.jpg')} style={styles.logo} resizeMode="contain" />
-            <Text style={styles.brandLabel}>General Hydroponics</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.brandButtonBox, styles.placeholderBox]}
-          >
-            <Text style={styles.placeholderText}>Coming Soon</Text>
-          </TouchableOpacity>
-        </View>
-
+      <View style={s.soon}>
+        <Ionicons name="sparkles-outline" size={16} color={theme.textMuted} style={{ marginRight: 8 }} />
+        <T variant="muted">More brands coming soon</T>
       </View>
-
-      <TouchableOpacity
-        style={styles.fullWidthButton}
-        onPress={() => navigation.navigate('Home')}
-      >
-        <Text style={styles.homeButtonText}>Home</Text>
-      </TouchableOpacity>
-    </View>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#a2cb95',
-    paddingHorizontal: 40,
-    paddingTop: 50,
-    paddingBottom: 30,
-    justifyContent: 'space-between',
-  },
-  topContent: {
-    flexGrow: 1,
-    alignItems: 'center',
-  },
-  title: {
-    fontFamily: 'LemonMilk',
-    textAlign: 'center',
-    color: 'white',
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontFamily: 'LemonMilkLight',
-    fontSize: 18,
-    textAlign: 'center',
-    color: 'white',
-    marginBottom: 30,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 20,
-  },
-  brandButtonBox: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-    width: '48%', // Slightly less than 50% to allow for spacing
-    minHeight: 120, // Ensure consistent height
-  },
-  placeholderBox: {
-    backgroundColor: '#e0e0e0',
-    opacity: 0.6,
-  },
-  logo: {
-    width: 100, // Slightly smaller to fit better
-    height: 40,
-    marginBottom: 8,
-  },
-  brandLabel: {
-    fontSize: 12, // Slightly smaller for better fit
-    fontFamily: 'LemonMilkLight',
-    color: '#000',
-    textAlign: 'center',
-    lineHeight: 14, // Better line spacing for multi-line text
-  },
-  placeholderText: {
-    fontSize: 12,
-    fontFamily: 'LemonMilkLight',
-    color: '#666',
-    textAlign: 'center',
-  },
-  fullWidthButton: {
-    backgroundColor: '#fff',
-    borderRadius: 5,
-    alignItems: 'center',
-    paddingVertical: 15,
-    width: '100%',
-  },
-  homeButtonText: {
-    fontSize: 12,
-    fontFamily: 'LemonMilkLight',
-    color: '#000',
-  },
-});
+const makeStyles = (t) =>
+  StyleSheet.create({
+    row: { flexDirection: 'row', alignItems: 'center', paddingVertical: space.md },
+    logoTile: {
+      width: 56,
+      height: 56,
+      borderRadius: radius.md,
+      backgroundColor: t.logoTile,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 6,
+      marginRight: space.lg,
+    },
+    logo: { width: '100%', height: '100%' },
+    soon: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: space.md },
+  });

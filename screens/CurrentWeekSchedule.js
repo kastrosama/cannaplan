@@ -1,328 +1,318 @@
-// CurrentWeekSchedule.js
-
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import moment from 'moment';
+// CurrentWeekSchedule.js — "This week": the mix for the current week as a step-by-step recipe.
+import React, { useCallback, useRef, useState } from 'react';
+import { View, Pressable, Alert, StyleSheet } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import ViewShot from 'react-native-view-shot';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Print from 'expo-print';
-import { useFonts } from 'expo-font';
-import {
-  getSchedule,
-  getTotalWeeks,
-  getWeekNumber,
-  getDayNumber,
-  getWeekRange,
-  getPhaseInfo,
-  getWeekRows,
-  parseWater,
-} from '../utils/growHelpers';
+import moment from 'moment';
 
-const { width: screenWidth } = Dimensions.get('window');
-const dynamicFontSize = Math.min(Math.round(screenWidth * 0.11), 42);
+import { useTheme, useStyles, space, radius, fonts } from '../theme/theme';
+import {
+  Screen,
+  Header,
+  Card,
+  T,
+  Button,
+  IconButton,
+  PhaseBadge,
+  PhaseProgress,
+  InfoPill,
+  EmptyState,
+  SectionTitle,
+} from '../components/ui';
+import { getGrowOverview, getMixingRows, getWeekRange, getMediumLabel, parseWater } from '../utils/growHelpers';
+import { loadAllGrows, getCurrentGrow, setCurrentGrow } from '../utils/growStore';
+import { brandName } from '../utils/brands';
 
 export default function CurrentWeekSchedule({ navigation }) {
-  const viewShotRef = useRef();
-  const scrollViewRef = useRef();
+  const { theme } = useTheme();
+  const s = useStyles(makeStyles);
+  const shotRef = useRef();
 
-  const [growData, setGrowData] = useState(null);
-  const [currentWeek, setCurrentWeek] = useState(null);
-  const [weekData, setWeekData] = useState(null);
-  const [weekRange, setWeekRange] = useState('');
-  const [daysSinceStart, setDaysSinceStart] = useState(null);
-  const [phaseInfo, setPhaseInfo] = useState('');
-  const [lightCycle, setLightCycle] = useState('');
+  const [grow, setGrow] = useState(undefined); // undefined = loading, null = none
+  const [water, setWater] = useState(NaN);
+  const [done, setDone] = useState({});
 
-  const [fontsLoaded] = useFonts({
-    'LemonMilk': require('../assets/fonts/LEMONMILK-Medium.otf'),
-    'LemonMilkLight': require('../assets/fonts/LEMONMILK-Light.otf'),
-  });
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const stored = await AsyncStorage.getItem('grow_current');
-        if (!stored) return;
-
-        const grow = JSON.parse(stored);
-        setGrowData(grow);
-
-        const weekNumber = getWeekNumber(grow.startDate);
-        setCurrentWeek(weekNumber);
-        setDaysSinceStart(getDayNumber(grow.startDate));
-        setWeekRange(getWeekRange(grow.startDate, Math.max(weekNumber, 1)));
-
-        const schedule = getSchedule(grow);
-        setWeekData(schedule.find((w) => w.week === weekNumber) || null);
-
-        const info = getPhaseInfo(grow, schedule, weekNumber);
-        setPhaseInfo(info.label);
-        setLightCycle(info.light);
-      } catch (err) {
-        console.error('Failed to load grow data or generate schedule', err);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  const exportAsImage = async (format = 'jpg') => {
-    if (!growData) {
-      Alert.alert('Grow Not Loaded', 'No grow data available to export.');
-      return;
-    }
-
-    scrollViewRef.current?.scrollTo({ y: 0, animated: false });
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    try {
-      const uri = await viewShotRef.current.capture();
-
-      if (format === 'jpg') {
-        const filename = `current_week_${growData.strain?.split(' ')[0]}_${moment(growData.startDate).format('YYYY-MM-DD')}.jpg`;
-        const fileUri = FileSystem.documentDirectory + filename;
-        await FileSystem.copyAsync({ from: uri, to: fileUri });
-
-        const { status } = await MediaLibrary.requestPermissionsAsync(true);
-        if (status !== 'granted') {
-          Alert.alert('Permission needed', 'Allow photo access to save the schedule to your gallery.');
-          return;
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      (async () => {
+        let g = await getCurrentGrow();
+        if (!g) {
+          const all = await loadAllGrows();
+          const active = all.find((x) => getGrowOverview(x).status === 'active');
+          if (active) {
+            await setCurrentGrow(active);
+            const { key, ...rest } = active;
+            g = rest;
+          }
         }
-        await MediaLibrary.saveToLibraryAsync(fileUri);
-        Alert.alert('Exported!', `Saved to your gallery as ${filename}`);
-      } else if (format === 'pdf') {
-        const imageBase64 = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
+        if (!alive) return;
+        setGrow(g || null);
+        setWater(g ? parseWater(g.waterAmount) : NaN);
+        setDone({});
+      })().catch(() => alive && setGrow(null));
+      return () => {
+        alive = false;
+      };
+    }, [])
+  );
 
-        const html = `
-          <html>
-            <body style="margin:0;padding:0;">
-              <img src="data:image/jpeg;base64,${imageBase64}" style="width:50%;display:block;margin:0 auto;" />
-            </body>
-          </html>
-        `;
+  if (grow === undefined) return <Screen header={<Header title="This week" />} />;
 
-        await Print.printAsync({ html });
+  if (!grow) {
+    return (
+      <Screen header={<Header title="This week" />}>
+        <Card>
+          <EmptyState
+            title="No grow selected"
+            message="Create a grow plan, or pick one on the Grows tab, to see what to mix this week."
+            action={<Button title="Create a grow plan" icon="add" onPress={() => navigation.navigate('Select Nutrients')} />}
+          />
+        </Card>
+      </Screen>
+    );
+  }
+
+  const o = getGrowOverview(grow);
+  const week = o.current;
+  const mix = week ? getMixingRows(week, water) : { doses: [], sprays: [], readings: [] };
+  const litres = isNaN(water) ? '—' : `${formatL(water)} L`;
+  const toggle = (k) => setDone((d) => ({ ...d, [k]: !d[k] }));
+  const changeWater = (delta) => setWater((w) => Math.max(0.5, Math.round(((isNaN(w) ? 10 : w) + delta) * 2) / 2));
+
+  const capture = async () => {
+    const uri = await shotRef.current.capture();
+    return uri;
+  };
+
+  const saveImage = async () => {
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync(true);
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Allow photo access to save the schedule to your gallery.');
+        return;
       }
-    } catch (error) {
-      console.error('Export failed:', error);
+      await MediaLibrary.saveToLibraryAsync(await capture());
+      Alert.alert('Saved', "This week's feed was saved to your gallery.");
+    } catch (e) {
+      console.error('Export failed:', e);
+      Alert.alert('Error', 'Could not save the image.');
     }
   };
 
-  if (!fontsLoaded) return null;
-
-  const renderSummary = () => {
-    if (!growData) return null;
-
-    const soilLabel =
-      growData.nutrients === 'DutchPro'
-        ? growData.dutchProSubtype
-        : growData.nutrients === 'AdvancedNutrients'
-        ? growData.advancedNutrientsSubtype
-        : growData.nutrients === 'CANNA'
-        ? growData.cannaMedium
-        : growData.nutrients === 'GeneralHydroponics'
-        ? growData.generalHydroponicsMedium
-        : growData.soilType;
-
-    const nutrientDisplay = growData.nutrients === 'GeneralHydroponics' ? 'General Hydro' : growData.nutrients;
-
-    const totalWeeks = getTotalWeeks(growData);
-
-    const summaryItems = [
-      ['STRAIN', growData.strain?.toUpperCase() || '-'],
-      ['SEED BANK', growData.seedBank || '-'],
-      ['TYPE', growData.type || '-'],
-      ['MEDIUM', soilLabel],
-      ['NUTRIENTS', nutrientDisplay || '-'],
-      ...(growData.nutrients === 'GeneralHydroponics' && growData.generalHydroponicsLine ? 
-        [['NUTRIENT LINE', growData.generalHydroponicsLine]] : []),
-      ['WATER', `${growData.waterAmount || '-'} L`],
-      ['START DATE', moment(growData.startDate).format('DD-MM-YYYY')],
-      ['DAYS SINCE START', daysSinceStart],
-      ['THIS WEEK', weekRange],
-      ['CURRENT PHASE', phaseInfo],
-      ['LIGHT CYCLE', lightCycle],
-      ['TOTAL GROW DURATION', `${totalWeeks} weeks`],
-    ];
-
-    return (
-      <View style={styles.section}>
-        <View style={styles.rowHeader}>
-          <Text style={[styles.cell, styles.boldLabel, styles.borderedCell]}>INFO</Text>
-          <Text style={[styles.cell, styles.boldLabel]}>VALUE</Text>
-        </View>
-        {summaryItems.map(([label, value]) => (
-          <View style={styles.rowWithBorders} key={label}>
-            <Text style={[styles.cell, styles.borderedCell]}>{label}</Text>
-            <Text style={styles.cell}>{value}</Text>
-          </View>
-        ))}
-      </View>
-    );
-  };
-
-  const renderWeekNutrients = () => {
-    if (!weekData || !growData) {
-      return (
-        <View style={styles.section}>
-          <Text style={styles.sectionText}>No schedule found for this week.</Text>
-        </View>
-      );
+  const print = async () => {
+    try {
+      const base64 = await FileSystem.readAsStringAsync(await capture(), { encoding: FileSystem.EncodingType.Base64 });
+      await Print.printAsync({
+        html: `<html><body style="margin:0;padding:24px;"><img src="data:image/jpeg;base64,${base64}" style="width:60%;display:block;margin:0 auto;" /></body></html>`,
+      });
+    } catch (e) {
+      console.error('Print failed:', e);
     }
-
-    const water = parseWater(growData.waterAmount);
-    const { kind } = weekData;
-    const rows = getWeekRows(weekData, water);
-
-    return (
-      <View style={styles.section}>
-        {weekData.stage ? <Text style={styles.sectionText}>Stage: {weekData.stage}</Text> : null}
-
-        <View style={styles.rowHeader}>
-          <Text style={[styles.cell, styles.boldLabel, styles.borderedCell]}>NUTRIENT</Text>
-          <Text style={[styles.cell, styles.boldLabel, styles.borderedCell]}>PER L</Text>
-          <Text style={[styles.cell, styles.boldLabel]}>TOTAL</Text>
-        </View>
-
-        {kind === 'flush' && (
-          <View style={styles.rowWithBorders}>
-            <Text style={[styles.cell, styles.borderedCell]}>Water only</Text>
-            <Text style={[styles.cell, styles.borderedCell]}>—</Text>
-            <Text style={styles.cell}>—</Text>
-          </View>
-        )}
-
-        {kind === 'harvest' && (
-          <View style={styles.rowWithBorders}>
-            <Text style={[styles.cell, styles.borderedCell]}>HARVEST</Text>
-            <Text style={[styles.cell, styles.borderedCell]}>—</Text>
-            <Text style={styles.cell}>—</Text>
-          </View>
-        )}
-
-        {rows
-          .filter((r) => kind !== 'flush' || r.reading)
-          .map((r) => (
-            <View style={styles.rowWithBorders} key={r.key}>
-              <Text style={[styles.cell, styles.borderedCell, !r.reading && { fontSize: 10 }]}>{r.label}</Text>
-              <Text style={[styles.cell, styles.borderedCell]}>{r.perL}</Text>
-              <Text style={styles.cell}>{r.total}</Text>
-            </View>
-          ))}
-      </View>
-    );
   };
+
+  const subtitle = [brandName(grow.nutrients), getMediumLabel(grow)].filter(Boolean).join(' · ');
+  let step = 1;
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#a2cb95' }}>
-      <ScrollView ref={scrollViewRef} contentContainerStyle={{ paddingBottom: 40 }}>
-        <ViewShot ref={viewShotRef} options={{ format: 'jpg', quality: 1.0 }} style={styles.container}>
-          <Text style={[styles.title, { fontSize: dynamicFontSize }]}>CANNAPLAN</Text>
-          <Text style={styles.subtitle}>Weekly Schedule – Week {currentWeek ?? '--'}</Text>
-          <Text style={styles.subtitle}>Day {daysSinceStart ?? '--'}</Text>
+    <Screen header={<Header title="This week" subtitle={grow.strain} />}>
+      <ViewShot ref={shotRef} options={{ format: 'jpg', quality: 0.95 }} style={{ backgroundColor: theme.bg }}>
+        {/* Overview */}
+        <Card>
+          <T variant="small">{subtitle}</T>
+          <View style={s.heroRow}>
+            <View>
+              <T variant="display">
+                {o.status === 'upcoming' ? 'Not started' : o.status === 'finished' ? 'Finished' : `Week ${o.week}`}
+              </T>
+              <T variant="muted">
+                {o.status === 'active'
+                  ? `Day ${o.day} · ${getWeekRange(grow.startDate, o.week)}`
+                  : o.status === 'upcoming'
+                  ? `Starts ${moment(grow.startDate).format('D MMMM')}`
+                  : `${o.total} week grow`}
+              </T>
+            </View>
+            {week ? <PhaseBadge kind={week.kind} label={o.phaseLabel} /> : null}
+          </View>
+          <PhaseProgress segments={o.segments} progress={o.progress} />
+          <View style={s.pills}>
+            {o.light !== '-' ? <InfoPill icon="sunny-outline" text={`Light ${o.light}`} /> : null}
+            <InfoPill icon="calendar-outline" text={`${o.total} weeks total`} />
+            {grow.type ? <InfoPill icon="leaf-outline" text={grow.type} /> : null}
+          </View>
+        </Card>
 
-          {renderSummary()}
-          {renderWeekNutrients()}
-        </ViewShot>
+        {/* Mix */}
+        {week && week.kind !== 'harvest' ? (
+          <>
+            <SectionTitle
+              action={
+                <View style={s.stepper}>
+                  <Pressable onPress={() => changeWater(-0.5)} hitSlop={8} style={s.stepBtn}>
+                    <Ionicons name="remove" size={18} color={theme.text} />
+                  </Pressable>
+                  <T variant="heading" style={{ minWidth: 56, textAlign: 'center' }}>{litres}</T>
+                  <Pressable onPress={() => changeWater(0.5)} hitSlop={8} style={s.stepBtn}>
+                    <Ionicons name="add" size={18} color={theme.text} />
+                  </Pressable>
+                </View>
+              }
+            >
+              Mix for
+            </SectionTitle>
 
-        <View style={{ paddingHorizontal: 20 }}>
-          <TouchableOpacity style={styles.fakeButton} onPress={() => navigation.navigate('FeedingScheduleSummary')}>
-            <Text style={styles.buttonText}>View Full Schedule</Text>
-          </TouchableOpacity>
+            <Card style={{ paddingVertical: space.sm }}>
+              <MixStep n={step++} title={`Fill with ${litres} of water`} detail="Room temperature, ideally rested" done={done.water} onPress={() => toggle('water')} />
 
-          <TouchableOpacity style={styles.fakeButton} onPress={() => exportAsImage('pdf')}>
-            <Text style={styles.buttonText}>Print Schedule</Text>
-          </TouchableOpacity>
+              {week.kind === 'flush'
+                ? <MixStep n={step++} title="Water only, no nutrients" detail="Flush week: let the plant use up what's in the medium" done={done.flush} onPress={() => toggle('flush')} />
+                : mix.doses.map((r) => (
+                    <MixStep
+                      key={r.key}
+                      n={step++}
+                      title={r.key}
+                      detail={`${r.perL} per litre${r.note ? ` · ${r.note}` : ''}`}
+                      amount={r.total}
+                      done={done[r.key]}
+                      onPress={() => toggle(r.key)}
+                    />
+                  ))}
 
-          <TouchableOpacity style={styles.fakeButton} onPress={() => exportAsImage('jpg')}>
-            <Text style={styles.buttonText}>Export as JPG</Text>
-          </TouchableOpacity>
+              {mix.readings.map((r) => (
+                <MixStep
+                  key={r.key}
+                  n={step++}
+                  title={r.key === 'pH' ? 'Adjust pH' : r.key === 'EC' ? 'Check EC' : `Check ${r.label}`}
+                  detail={r.key === 'pH' ? 'Always last, after everything is mixed in' : 'Target range'}
+                  amount={r.perL}
+                  reading
+                  done={done[r.key]}
+                  onPress={() => toggle(r.key)}
+                />
+              ))}
+            </Card>
 
-          <TouchableOpacity style={styles.fakeButton} onPress={() => navigation.navigate('Home')}>
-            <Text style={styles.buttonText}>Home</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </View>
+            {mix.sprays.length ? (
+              <>
+                <SectionTitle>Foliar spray · separate bottle</SectionTitle>
+                <Card>
+                  {mix.sprays.map((r) => (
+                    <View key={r.key} style={s.sprayRow}>
+                      <Ionicons name="water-outline" size={18} color={theme.phase.flush} style={{ marginRight: 10 }} />
+                      <T variant="body" style={{ flex: 1 }}>{r.key}</T>
+                      <T variant="small">{[r.perL, r.note].filter(Boolean).join(' · ')}</T>
+                    </View>
+                  ))}
+                </Card>
+              </>
+            ) : null}
+
+            <T variant="small" style={s.note}>
+              Mixing order is general guidance. If your bottle label says otherwise, follow the label.
+            </T>
+          </>
+        ) : null}
+
+        {week && week.kind === 'harvest' ? (
+          <Card accentColor={theme.phase.harvest}>
+            <T variant="title">Harvest week</T>
+            <T variant="muted" style={{ marginTop: 6 }}>
+              No feeding. Check the trichomes, then harvest, dry and cure. Nice work!
+            </T>
+          </Card>
+        ) : null}
+
+        {!week ? (
+          <Card>
+            <T variant="muted">
+              {o.status === 'upcoming'
+                ? 'Your schedule starts on the start date. Open the full schedule to see what week 1 looks like.'
+                : 'This grow has finished. Start a new one from the New grow tab.'}
+            </T>
+          </Card>
+        ) : null}
+      </ViewShot>
+
+      <Button title="Full schedule" icon="calendar" variant="secondary" onPress={() => navigation.navigate('FeedingScheduleSummary')} style={{ marginTop: space.sm }} />
+      <View style={s.actions}>
+        <IconButton icon="image-outline" label="Save image" onPress={saveImage} />
+        <IconButton icon="print-outline" label="Print" onPress={print} />
+        <IconButton icon="swap-horizontal-outline" label="Switch grow" onPress={() => navigation.navigate('Home')} />
+      </View>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#a2cb95',
-    paddingTop: 50,
-    paddingHorizontal: 20,
-  },
-  title: {
-    fontFamily: 'LemonMilk',
-    textAlign: 'center',
-    color: 'white',
-  },
-  subtitle: {
-    fontSize: 18,
-    fontFamily: 'LemonMilkLight',
-    textAlign: 'center',
-    color: 'white',
-    marginBottom: 20,
-  },
-  section: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 10,
-    marginBottom: 30,
-  },
-  sectionText: {
-    fontSize: 12,
-    fontFamily: 'LemonMilkLight',
-    color: '#000',
-    marginBottom: 6,
-  },
-  fakeButton: {
-    backgroundColor: 'white',
-    paddingVertical: 12,
-    borderRadius: 5,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  buttonText: {
-    fontSize: 12,
-    fontFamily: 'LemonMilkLight',
-    color: '#000',
-  },
-  boldLabel: {
-    fontFamily: 'LemonMilk',
-  },
-  rowHeader: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
-    paddingBottom: 6,
-    marginBottom: 8,
-    alignItems: 'center',
-  },
-  rowWithBorders: {
-    flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderColor: '#eee',
-    marginBottom: 0,
-    alignItems: 'center',
-  },
-  cell: {
-    flex: 1,
-    fontSize: 12,
-    fontFamily: 'LemonMilkLight',
-    color: '#000',
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-  },
-  borderedCell: {
-    borderRightWidth: 1,
-    borderColor: '#ccc',
-  },
-});
+function MixStep({ n, title, detail, amount, done, onPress, reading }) {
+  const { theme } = useTheme();
+  const s = useStyles(makeStyles);
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [s.step, pressed && { opacity: 0.7 }]}>
+      <View style={[s.stepNum, done && { backgroundColor: theme.accent, borderColor: theme.accent }]}>
+        {done ? (
+          <Ionicons name="checkmark" size={16} color={theme.onAccent} />
+        ) : (
+          <T variant="small" color={theme.text} style={{ fontFamily: fonts.semibold }}>{n}</T>
+        )}
+      </View>
+      <View style={{ flex: 1, paddingRight: space.sm }}>
+        <T variant="heading" style={done && s.doneText}>{title}</T>
+        {detail ? <T variant="small" style={{ marginTop: 2 }}>{detail}</T> : null}
+      </View>
+      {amount ? (
+        <T variant={reading ? 'heading' : 'number'} color={reading ? theme.textMuted : theme.text} style={done && s.doneText}>
+          {amount}
+        </T>
+      ) : null}
+    </Pressable>
+  );
+}
+
+const formatL = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
+
+const makeStyles = (t) =>
+  StyleSheet.create({
+    heroRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      justifyContent: 'space-between',
+      marginTop: space.sm,
+      marginBottom: space.lg,
+    },
+    pills: { flexDirection: 'row', flexWrap: 'wrap', marginTop: space.lg, marginBottom: -8 },
+    stepper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: t.surface,
+      borderRadius: radius.pill,
+      paddingHorizontal: 4,
+      paddingVertical: 2,
+    },
+    stepBtn: { padding: 6 },
+    step: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.border,
+    },
+    stepNum: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      borderWidth: 1.5,
+      borderColor: t.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: space.md,
+    },
+    doneText: { opacity: 0.45, textDecorationLine: 'line-through' },
+    sprayRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+    note: { textAlign: 'center', marginTop: space.xs, marginBottom: space.md, paddingHorizontal: space.lg },
+    actions: { flexDirection: 'row', marginTop: space.md, marginHorizontal: -4 },
+  });

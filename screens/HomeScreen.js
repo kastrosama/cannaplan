@@ -1,161 +1,185 @@
-import React, { useEffect, useState } from 'react';
-import {
-  ScrollView,
-  View,
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  Alert,
-  Dimensions,
-  Image,
-  Linking,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getTotalWeeks } from '../utils/growHelpers';
-import { useFonts } from 'expo-font';
+// HomeScreen.js — dashboard of grows.
+import React, { useCallback, useState } from 'react';
+import { View, Image, StyleSheet } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import moment from 'moment';
 
-const { width: screenWidth } = Dimensions.get('window');
-const dynamicFontSize = Math.min(Math.round(screenWidth * 0.11), 42);
+import { useTheme, useStyles, space, radius } from '../theme/theme';
+import {
+  Screen,
+  Wordmark,
+  Card,
+  T,
+  Button,
+  SectionTitle,
+  PhaseBadge,
+  PhaseProgress,
+  EmptyState,
+  ListRow,
+} from '../components/ui';
+import { loadAllGrows, setCurrentGrow } from '../utils/growStore';
+import { getGrowOverview, getMediumLabel } from '../utils/growHelpers';
+import { brandById, brandName } from '../utils/brands';
 
 export default function HomeScreen({ navigation }) {
-  const [fontsLoaded] = useFonts({
-    'LemonMilk': require('../assets/fonts/LEMONMILK-Medium.otf'),
-    'LemonMilkLight': require('../assets/fonts/LEMONMILK-Light.otf'),
-  });
+  const { theme } = useTheme();
+  const s = useStyles(makeStyles);
+  const [grows, setGrows] = useState(null);
 
-  const [showSchedule, setShowSchedule] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      loadAllGrows()
+        .then((list) => alive && setGrows(list.map((g) => ({ ...g, overview: getGrowOverview(g) }))))
+        .catch(() => alive && setGrows([]));
+      return () => {
+        alive = false;
+      };
+    }, [])
+  );
 
-  useEffect(() => {
-    const checkCurrentGrow = async () => {
-      try {
-        await AsyncStorage.removeItem('grow_current');
-        console.log('grow_current cleared on Home load');
-
-        const keys = await AsyncStorage.getAllKeys();
-        const growKeys = keys.filter(key => key.startsWith('grow_') && key !== 'grow_current');
-
-        const grows = await Promise.all(
-          growKeys.map(async (key) => {
-            const item = await AsyncStorage.getItem(key);
-            return JSON.parse(item);
-          })
-        );
-
-        const today = moment();
-        const matchingGrow = grows.find(g => {
-          const start = moment(g.startDate);
-          const totalWeeks = getTotalWeeks(g);
-          const end = start.clone().add(totalWeeks, 'weeks');
-          return today.isSameOrAfter(start) && today.isSameOrBefore(end);
-        });
-
-        if (matchingGrow) {
-          await AsyncStorage.setItem('grow_current', JSON.stringify(matchingGrow));
-          setShowSchedule(true);
-        }
-      } catch (e) {
-        console.error('Error checking grow_current:', e);
-      }
-    };
-
-    checkCurrentGrow();
-  }, []);
-
-  const handleLoadSchedule = async () => {
-    const current = await AsyncStorage.getItem('grow_current');
-    if (current) {
-      navigation.navigate('Feeding Schedule');
-    } else {
-      Alert.alert('No Current Grow', 'Please create a grow plan first.');
-    }
+  const openGrow = async (grow) => {
+    await setCurrentGrow(grow);
+    navigation.navigate('Feeding Schedule');
   };
 
-  const openSeedStore = () => {
-    Linking.openURL('https://cbdynamics.nl');
-  };
-
-  if (!fontsLoaded) return null;
+  const active = (grows || []).filter((g) => g.overview.status === 'active');
+  const upcoming = (grows || []).filter((g) => g.overview.status === 'upcoming');
+  const finished = (grows || []).filter((g) => g.overview.status === 'finished');
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={[styles.title, { fontSize: dynamicFontSize }]}>CANNAPLAN</Text>
-      <Text style={styles.subtitle}>Smart Growing Made Simple</Text>
-
-      <Image
-        source={require('../assets/bigbud.png')} 
-        style={styles.image}
-        resizeMode="contain"
-      />
-
-      <View style={styles.buttonGroup}>
-        <TouchableOpacity style={styles.fakeButton} onPress={() => navigation.navigate('Select Nutrients')}>
-          <Text style={styles.buttonText}>Click to Start</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.fakeButton} onPress={() => navigation.navigate('Previous Grows')}>
-          <Text style={styles.buttonText}>Saved Grows</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.fakeButton} onPress={() => navigation.navigate('Settings')}>
-          <Text style={styles.buttonText}>Settings</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.fakeButton} onPress={() => navigation.navigate('About')}>
-          <Text style={styles.buttonText}>About</Text>
-        </TouchableOpacity>
-
-        {/*
-<TouchableOpacity style={styles.fakeButton} onPress={openSeedStore}>
-  <Text style={styles.buttonText}>Buy Seeds</Text>
-</TouchableOpacity>
-*/}
-
+    <Screen>
+      <View style={s.top}>
+        <Wordmark />
+        <T variant="muted" style={{ marginTop: 6 }}>
+          {moment().format('dddd, D MMMM')}
+        </T>
       </View>
-    </ScrollView>
+
+      {grows && grows.length === 0 ? (
+        <Card style={{ marginTop: space.lg }}>
+          <EmptyState
+            title="Start your first grow"
+            message="Pick your nutrients and CannaPlan works out exactly what to mix, week by week."
+            action={<Button title="Create a grow plan" icon="add" onPress={() => navigation.navigate('Select Nutrients')} />}
+          />
+        </Card>
+      ) : null}
+
+      {active.length > 0 ? <SectionTitle>Growing now</SectionTitle> : null}
+      {active.map((g) => (
+        <GrowCard key={g.key} grow={g} onPress={() => openGrow(g)} />
+      ))}
+
+      {grows && grows.length > 0 ? (
+        <Button
+          title="New grow"
+          icon="add"
+          variant={active.length ? 'secondary' : 'primary'}
+          onPress={() => navigation.navigate('Select Nutrients')}
+          style={{ marginTop: space.sm }}
+        />
+      ) : null}
+
+      {upcoming.length > 0 ? <SectionTitle>Upcoming</SectionTitle> : null}
+      {upcoming.map((g) => (
+        <GrowCard key={g.key} grow={g} onPress={() => openGrow(g)} />
+      ))}
+
+      {finished.length > 0 ? (
+        <>
+          <SectionTitle>Finished</SectionTitle>
+          <Card style={{ paddingVertical: 4 }}>
+            {finished.slice(0, 5).map((g, i) => (
+              <View key={g.key} style={i > 0 && s.divider}>
+                <ListRow
+                  icon="checkmark-done-outline"
+                  title={g.strain || 'Unnamed grow'}
+                  subtitle={`${brandName(g.nutrients)} · started ${moment(g.startDate).format('D MMM YYYY')}`}
+                  onPress={() => openGrow(g)}
+                />
+              </View>
+            ))}
+          </Card>
+        </>
+      ) : null}
+
+      {grows && grows.length > 0 ? (
+        <Button
+          title="Manage saved grows"
+          variant="ghost"
+          onPress={() => navigation.navigate('Previous Grows')}
+          style={{ marginTop: space.sm }}
+        />
+      ) : null}
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    paddingTop: 50,
-    paddingBottom: 60,
-    paddingHorizontal: 40,
-    justifyContent: 'flex-start',
-    backgroundColor: '#a2cb95',
-    flexGrow: 1,
-  },
-  title: {
-    fontFamily: 'LemonMilk',
-    textAlign: 'center',
-    color: '#fff',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontFamily: 'LemonMilkLight',
-    fontSize: 18,
-    textAlign: 'center',
-    color: 'white',
-    marginBottom: 20,
-  },
-  image: {
-    width: '100%',
-    height: 200,
-    marginBottom: 30,
-  },
-  buttonGroup: {
-    marginTop: 10,
-  },
-  fakeButton: {
-    backgroundColor: '#fff',
-    paddingVertical: 15,
-    borderRadius: 5,
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  buttonText: {
-    fontFamily: 'LemonMilkLight',
-    fontSize: 12,
-    color: '#000',
-  },
-});
+function GrowCard({ grow, onPress }) {
+  const { theme } = useTheme();
+  const s = useStyles(makeStyles);
+  const o = grow.overview;
+  const brand = brandById(grow.nutrients);
+  const kind = o.current?.kind || (o.status === 'upcoming' ? 'veg' : 'harvest');
+  const subtitle = [brandName(grow.nutrients), getMediumLabel(grow), grow.type].filter(Boolean).join(' · ');
+
+  return (
+    <Card onPress={onPress}>
+      <View style={s.cardTop}>
+        <View style={{ flex: 1, paddingRight: space.md }}>
+          <T variant="title" numberOfLines={1}>{grow.strain || 'Unnamed grow'}</T>
+          <T variant="small" numberOfLines={1} style={{ marginTop: 3 }}>{subtitle}</T>
+        </View>
+        {brand ? (
+          <View style={s.logoTile}>
+            <Image source={brand.logo} style={s.logo} resizeMode="contain" />
+          </View>
+        ) : null}
+      </View>
+
+      {o.status === 'upcoming' ? (
+        <T variant="muted" style={{ marginTop: space.md }}>
+          Starts {moment(grow.startDate).format('D MMMM')} · {o.total} weeks
+        </T>
+      ) : (
+        <>
+          <View style={s.weekRow}>
+            <PhaseBadge kind={kind} label={o.phaseLabel} />
+            <T variant="small">Week {Math.min(o.week, o.total)} of {o.total}</T>
+          </View>
+          <PhaseProgress segments={o.segments} progress={o.progress} />
+          <View style={s.cardFoot}>
+            <T variant="small">Day {o.day}</T>
+            <T variant="small" color={theme.accent}>Open this week's feed →</T>
+          </View>
+        </>
+      )}
+    </Card>
+  );
+}
+
+const makeStyles = (t) =>
+  StyleSheet.create({
+    top: { paddingTop: space.lg, paddingBottom: space.sm },
+    cardTop: { flexDirection: 'row', alignItems: 'center' },
+    logoTile: {
+      width: 48,
+      height: 48,
+      borderRadius: radius.sm,
+      backgroundColor: t.logoTile,
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: 5,
+    },
+    logo: { width: '100%', height: '100%' },
+    weekRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: space.lg,
+      marginBottom: space.md,
+    },
+    cardFoot: { flexDirection: 'row', justifyContent: 'space-between', marginTop: space.md },
+    divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.border },
+  });

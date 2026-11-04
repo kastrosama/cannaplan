@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/splash_screen.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kast0r.cannaplan"
@@ -37,10 +37,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash_screen.png",
-          "imageWidth": 220,
+          "image": "./assets/splash-leaf.png",
+          "imageWidth": 140,
           "resizeMode": "contain",
-          "backgroundColor": "#a2cb95"
+          "backgroundColor": "#0D1411"
         }
       ],
       [
@@ -54,6 +54,7 @@
         }
       ],
       "expo-font"
-    ]
+    ],
+    "backgroundColor": "#0D1411"
   }
 }

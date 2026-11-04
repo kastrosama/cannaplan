@@ -1,39 +1,31 @@
+// SettingsScreen.js — appearance, data and about.
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  Dimensions,
-} from 'react-native';
+import { View, Alert, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFonts } from 'expo-font';
 
-const { width: screenWidth } = Dimensions.get('window');
-const dynamicFontSize = Math.min(Math.round(screenWidth * 0.11), 42);
+import { useTheme, useStyles, space } from '../theme/theme';
+import { Screen, Header, Card, T, ChipGroup, SectionTitle, ListRow } from '../components/ui';
+
+const APP_VERSION = require('../app.json').expo.version;
 
 export default function SettingsScreen({ navigation }) {
-  const [fontsLoaded] = useFonts({
-    'LemonMilk': require('../assets/fonts/LEMONMILK-Medium.otf'),
-    'LemonMilkLight': require('../assets/fonts/LEMONMILK-Light.otf'),
-  });
+  const { preference, setPreference } = useTheme();
+  const s = useStyles(makeStyles);
 
-  if (!fontsLoaded) return null;
-
-  const handleDeleteAll = async () => {
+  const handleDeleteAll = () => {
     Alert.alert(
-      'Reset App',
-      'This will permanently delete all saved grows and reset the app. Are you sure?',
+      'Delete all data',
+      'This permanently deletes every saved grow and resets the app. This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete All',
+          text: 'Delete everything',
           style: 'destructive',
           onPress: async () => {
             try {
               await AsyncStorage.clear();
-              Alert.alert('Reset Complete', 'All data has been cleared.');
+              setPreference(preference); // keep the chosen appearance
+              Alert.alert('Done', 'All data has been cleared.');
             } catch (e) {
               console.error('Failed to clear storage:', e);
               Alert.alert('Error', 'Something went wrong while resetting.');
@@ -45,71 +37,44 @@ export default function SettingsScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.topContent}>
-        <Text style={[styles.title, { fontSize: dynamicFontSize }]}>CANNAPLAN</Text>
-        <Text style={styles.subtitle}>Settings</Text>
+    <Screen header={<Header title="Settings" />}>
+      <SectionTitle>Appearance</SectionTitle>
+      <Card>
+        <ChipGroup
+          options={[
+            { label: 'Dark', value: 'dark' },
+            { label: 'Light', value: 'light' },
+            { label: 'Match phone', value: 'system' },
+          ]}
+          value={preference}
+          onChange={setPreference}
+        />
+        <T variant="small" style={{ marginTop: space.md }}>
+          Dark mode is easier on the eyes in a grow room and won't light up the tent.
+        </T>
+      </Card>
 
-        <TouchableOpacity style={styles.dangerButton} onPress={handleDeleteAll}>
-          <Text style={styles.buttonText}>Delete All Data</Text>
-        </TouchableOpacity>
-      </View>
+      <SectionTitle>Grows</SectionTitle>
+      <Card style={s.list}>
+        <ListRow icon="albums-outline" title="Saved grows" subtitle="Open or delete grows" onPress={() => navigation.navigate('Previous Grows')} />
+        <View style={s.divider} />
+        <ListRow icon="trash-outline" title="Delete all data" subtitle="Removes every saved grow" danger onPress={handleDeleteAll} />
+      </Card>
 
-      <TouchableOpacity
-        style={styles.fullWidthButton}
-        onPress={() => navigation.navigate('Home')}
-      >
-        <Text style={styles.buttonText}>Home</Text>
-      </TouchableOpacity>
-    </View>
+      <SectionTitle>CannaPlan</SectionTitle>
+      <Card style={s.list}>
+        <ListRow icon="information-circle-outline" title="About & links" onPress={() => navigation.navigate('About')} />
+        <View style={s.divider} />
+        <ListRow icon="shield-checkmark-outline" title="Privacy" subtitle="Everything stays on your phone. No accounts, no tracking." right={null} />
+      </Card>
+
+      <T variant="small" style={{ textAlign: 'center', marginTop: space.lg }}>Version {APP_VERSION}</T>
+    </Screen>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#a2cb95',
-    paddingHorizontal: 40,
-    paddingTop: 50,
-    paddingBottom: 30,
-    justifyContent: 'space-between',
-  },
-  topContent: {
-    flexGrow: 1,
-    alignItems: 'center',
-  },
-  title: {
-    fontFamily: 'LemonMilk',
-    textAlign: 'center',
-    color: 'white',
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontFamily: 'LemonMilkLight',
-    fontSize: 18,
-    textAlign: 'center',
-    color: 'white',
-    marginBottom: 30,
-  },
-  dangerButton: {
-    backgroundColor: '#ff6666',
-    borderRadius: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginTop: 10,
-    width: '100%',
-    alignItems: 'center',
-  },
-  fullWidthButton: {
-    backgroundColor: 'white',
-    borderRadius: 5,
-    paddingVertical: 15,
-    width: '100%',
-    alignItems: 'center',
-  },
-  buttonText: {
-    fontSize: 12,
-    fontFamily: 'LemonMilkLight',
-    color: '#000',
-  },
-});
+const makeStyles = (t) =>
+  StyleSheet.create({
+    list: { paddingVertical: 2 },
+    divider: { height: StyleSheet.hairlineWidth, backgroundColor: t.border },
+  });

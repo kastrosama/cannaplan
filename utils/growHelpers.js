@@ -118,25 +118,27 @@ const fmt = (n) => String(Math.round(n * 100) / 100);
  *  - total: text for the total column (sprays are NOT added to the reservoir)
  */
 export const describeDose = (value, water) => {
+  const tot = (n) => `${fmt(Math.round(n * 10) / 10)}`;
+  const noWater = isNaN(water);
+
   if (typeof value === 'number') {
     if (value === 0) return { skip: true };
-    return {
-      perL: `${fmt(value)} ml`,
-      total: isNaN(water) ? '—' : `${(value * water).toFixed(1)} ml`,
-    };
+    return { perL: `${fmt(value)} ml`, total: noWater ? '—' : `${tot(value * water)} ml` };
   }
 
   const text = String(value ?? '').trim();
   const lower = text.toLowerCase();
   const nums = (text.match(/\d+(?:[.,]\d+)?/g) || []).map((s) => parseFloat(s.replace(',', '.')));
   const unit = /\d\s*g\b/i.test(text) ? 'g' : 'ml';
-  const freq = (text.match(/\((.*?)\)/) || [])[1];
+  const note = (text.match(/\((.*?)\)/) || [])[1];
   const isSpray = lower.includes('spray');
-  const isRange = nums.length >= 2 && /[–-]/.test(text) && !freq;
+  const isRange = nums.length >= 2 && /[–-]/.test(text) && !note;
 
   if (isSpray) {
-    const amount = nums.length && !lower.startsWith('spray') ? `${fmt(nums[0])} ${unit}/L ` : '';
-    return { perL: `${amount}spray${freq ? ` (${freq})` : ''}`.trim(), total: 'Foliar only' };
+    if (lower.startsWith('spray') || !nums.length) {
+      return { perL: text.charAt(0).toUpperCase() + text.slice(1), total: 'Foliar only', spray: true };
+    }
+    return { perL: `${fmt(nums[0])} ${unit}/L`, note: note, total: 'Foliar only', spray: true };
   }
 
   if (!nums.length) return { perL: text || '—', total: '—' };
@@ -146,16 +148,12 @@ export const describeDose = (value, water) => {
     const [min, max] = nums;
     return {
       perL: `${fmt(min)}–${fmt(max)} ${unit}`,
-      total: isNaN(water) ? '—' : `${(min * water).toFixed(1)}–${(max * water).toFixed(1)} ${unit}`,
+      total: noWater ? '—' : `${tot(min * water)}–${tot(max * water)} ${unit}`,
     };
   }
 
   const n = nums[0];
-  const note = freq ? ` (${freq})` : '';
-  return {
-    perL: `${fmt(n)} ${unit}${note}`,
-    total: isNaN(water) ? '—' : `${(n * water).toFixed(1)} ${unit}`,
-  };
+  return { perL: `${fmt(n)} ${unit}`, note, total: noWater ? '—' : `${tot(n * water)} ${unit}` };
 };
 
 // Nutrient rows for a week, ready to render. Readings (pH/EC/TDS) come last.
@@ -171,7 +169,7 @@ export const getWeekRows = (week, water) => {
       continue;
     } else {
       const d = describeDose(val, water);
-      if (!d.skip) doses.push({ key, label: key.toUpperCase(), perL: d.perL, total: d.total });
+      if (!d.skip) doses.push({ key, label: key.toUpperCase(), perL: d.perL, note: d.note, total: d.total, spray: !!d.spray });
     }
   }
   return [...doses, ...readings];
@@ -182,3 +180,77 @@ export const makeGrowKey = (strain, startDate) => {
   const strainPart = (strain.trim().split(/\s+/)[0] || 'Grow').replace(/[^\w-]/g, '');
   return `grow_${strainPart}_${moment(startDate).format('YYYY-MM-DD')}_${Date.now()}`;
 };
+
+// ---------- Mixing order ----------
+// General guidance: silica first, then Cal-Mag, then base nutrients (Micro, A before B),
+// then additives. pH/EC are adjusted last. Brand labels win if they differ.
+const mixRank = (name) => {
+  const n = name.toLowerCase();
+  if (n.includes('silica') || n.includes('silicon')) return 0;
+  if (/cal[\s·-]?mag|camg|calimagic/.test(n)) return 1;
+  if (n.includes('micro')) return 2;
+  if (/\ba$/.test(n)) return 3;
+  if (/\bb$/.test(n)) return 4;
+  if (/^(bio·grow|bio·bloom|fish·mix|flora(gro|bloom)|floranova|maxi(gro|bloom)|biothrive|iguana juice|terra |aqua |substra |grow$|bloom$)/.test(n)) return 3.5;
+  return 5;
+};
+
+// Rows sorted into a suggested mixing order (readings stay last).
+export const getMixingRows = (week, water) => {
+  const rows = getWeekRows(week, water);
+  const doses = rows.filter((r) => !r.reading && !r.spray);
+  const sprays = rows.filter((r) => r.spray);
+  const readings = rows.filter((r) => r.reading);
+  const ordered = doses
+    .map((r, i) => ({ r, i, k: mixRank(r.key) }))
+    .sort((a, b) => a.k - b.k || a.i - b.i)
+    .map((x) => x.r);
+  return { doses: ordered, sprays, readings };
+};
+
+// ---------- Grow overview ----------
+
+// Phase segments for a progress bar: [{ kind, weeks }]
+export const getPhaseSegments = (schedule) => {
+  const out = [];
+  for (const w of schedule) {
+    const last = out[out.length - 1];
+    if (last && last.kind === w.kind) last.weeks += 1;
+    else out.push({ kind: w.kind, weeks: 1 });
+  }
+  return out;
+};
+
+// Everything a grow card needs.
+export const getGrowOverview = (growData, date = moment()) => {
+  const schedule = getSchedule(growData);
+  const total = schedule.length || getTotalWeeks(growData);
+  const week = getWeekNumber(growData.startDate, date);
+  const day = getDayNumber(growData.startDate, date);
+  const current = schedule.find((w) => w.week === week) || null;
+  const status = week < 1 ? 'upcoming' : week > total ? 'finished' : 'active';
+  const info = getPhaseInfo(growData, schedule, week);
+  return {
+    schedule,
+    total,
+    week,
+    day,
+    current,
+    status,
+    phaseLabel: info.label,
+    light: info.light,
+    segments: getPhaseSegments(schedule),
+    progress: Math.max(0, Math.min(1, (day - 1) / (total * 7))),
+  };
+};
+
+export const getMediumLabel = (g) =>
+  g.nutrients === 'DutchPro'
+    ? g.dutchProSubtype
+    : g.nutrients === 'AdvancedNutrients'
+    ? g.advancedNutrientsSubtype
+    : g.nutrients === 'CANNA'
+    ? g.cannaMedium
+    : g.nutrients === 'GeneralHydroponics'
+    ? g.generalHydroponicsMedium
+    : g.soilType;
