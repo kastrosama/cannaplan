@@ -4,9 +4,9 @@ import { View, Pressable, Alert, StyleSheet } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import ViewShot from 'react-native-view-shot';
-import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Print from 'expo-print';
+import { weekPrintHtml } from '../utils/printHtml';
 import moment from 'moment';
 
 import { useTheme, useStyles, space, radius, fonts } from '../theme/theme';
@@ -106,10 +106,7 @@ export default function CurrentWeekSchedule({ navigation }) {
 
   const print = async () => {
     try {
-      const base64 = await FileSystem.readAsStringAsync(await capture(), { encoding: FileSystem.EncodingType.Base64 });
-      await Print.printAsync({
-        html: `<html><body style="margin:0;padding:24px;"><img src="data:image/jpeg;base64,${base64}" style="width:60%;display:block;margin:0 auto;" /></body></html>`,
-      });
+      await Print.printAsync({ html: weekPrintHtml(grow, water) });
     } catch (e) {
       console.error('Print failed:', e);
     }
