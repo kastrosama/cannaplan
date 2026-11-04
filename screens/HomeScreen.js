@@ -16,6 +16,7 @@ import {
   PhaseProgress,
   EmptyState,
   ListRow,
+  BrandLogo,
 } from '../components/ui';
 import { loadAllGrows, setCurrentGrow } from '../utils/growStore';
 import { getGrowOverview, getMediumLabel } from '../utils/growHelpers';
@@ -133,7 +134,7 @@ function GrowCard({ grow, onPress }) {
         </View>
         {brand ? (
           <View style={s.logoTile}>
-            <Image source={brand.logo} style={s.logo} resizeMode="contain" />
+            <BrandLogo brand={brand} style={s.logo} />
           </View>
         ) : null}
       </View>

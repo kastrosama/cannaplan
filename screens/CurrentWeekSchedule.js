@@ -189,7 +189,7 @@ export default function CurrentWeekSchedule({ navigation }) {
                   key={r.key}
                   n={step++}
                   title={r.key === 'pH' ? 'Adjust pH' : r.key === 'EC' ? 'Check EC' : `Check ${r.label}`}
-                  detail={r.key === 'pH' ? 'Always last, after everything is mixed in' : 'Target range'}
+                  detail={r.key === 'pH' ? 'Always last, after everything is mixed in' : /[–-]/.test(r.perL) ? 'Target range' : 'Target'}
                   amount={r.perL}
                   reading
                   done={done[r.key]}

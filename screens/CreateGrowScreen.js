@@ -7,7 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import moment from 'moment';
 
 import { useTheme, useStyles, space, radius, fonts } from '../theme/theme';
-import { Screen, Header, Card, T, Button, ChipGroup, Field, Input, SectionTitle } from '../components/ui';
+import { Screen, Header, Card, T, Button, ChipGroup, Field, Input, SectionTitle, BrandLogo } from '../components/ui';
+import { PLAGRON_LINES } from '../utils/charts/plagron';
 import { makeGrowKey, parseWater, getTotalWeeks } from '../utils/growHelpers';
 import { brandById } from '../utils/brands';
 
@@ -80,6 +81,8 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
   const [ghEnvironment, setGhEnvironment] = useState('');
   const [ghMedium, setGhMedium] = useState('');
 
+  const [plagronLine, setPlagronLine] = useState('');
+
   const [missing, setMissing] = useState([]);
 
   const isAuto = type === 'Autoflower';
@@ -101,6 +104,7 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
     [nutrientBrand === 'GeneralHydroponics' && ghLine === 'MaxiSeries' && !ghEnvironment, 'environment'],
     [nutrientBrand === 'GeneralHydroponics' && !!ghLine && !ghIntensity, 'feeding intensity'],
     [nutrientBrand === 'GeneralHydroponics' && !ghMedium, 'growing medium'],
+    [nutrientBrand === 'Plagron' && !plagronLine, 'Plagron line'],
     [isNaN(parseWater(waterAmount)), 'water amount'],
   ];
 
@@ -125,6 +129,7 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
       generalHydroponicsIntensity: ghIntensity,
       generalHydroponicsEnvironment: ghEnvironment,
       generalHydroponicsMedium: ghMedium,
+      plagronLine,
       waterAmount: String(parseWater(waterAmount)),
     };
 
@@ -145,7 +150,7 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
       header={<Header title={brand?.name || 'New grow'} subtitle="Step 2 of 2 · Grow details" onBack={() => navigation.goBack()} right={
         brand ? (
           <View style={s.logoTile}>
-            <Image source={brand.logo} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+            <BrandLogo brand={brand} />
           </View>
         ) : null
       } />}
@@ -214,6 +219,23 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
         {nutrientBrand === 'CANNA' && (
           <Field label="Growing medium">
             <ChipGroup options={CANNA_MEDIUMS} value={cannaMedium} onChange={setCannaMedium} />
+          </Field>
+        )}
+
+        {nutrientBrand === 'Plagron' && (
+          <Field
+            label="Line & medium"
+            hint={
+              plagronLine.includes('Grow-Mix') || plagronLine.includes('All-Mix')
+                ? 'Pre-fertilised soil: the base feed starts later because the soil already feeds the plant.'
+                : 'Pick the line that matches your bottles and the soil or medium you use.'
+            }
+          >
+            <ChipGroup
+              options={Object.keys(PLAGRON_LINES).map((k) => ({ label: k, value: k }))}
+              value={plagronLine}
+              onChange={setPlagronLine}
+            />
           </Field>
         )}
 

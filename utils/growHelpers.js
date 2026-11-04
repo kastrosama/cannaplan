@@ -191,7 +191,7 @@ const mixRank = (name) => {
   if (n.includes('micro')) return 2;
   if (/\ba$/.test(n)) return 3;
   if (/\bb$/.test(n)) return 4;
-  if (/^(bio·grow|bio·bloom|fish·mix|flora(gro|bloom)|floranova|maxi(gro|bloom)|biothrive|iguana juice|terra |aqua |substra |grow$|bloom$)/.test(n)) return 3.5;
+  if (/^(bio·grow|bio·bloom|fish·mix|flora(gro|bloom)|floranova|maxi(gro|bloom)|biothrive|iguana juice|alga (grow|bloom)|cocos |hydro (a|b)$|terra |aqua |substra |grow$|bloom$)/.test(n)) return 3.5;
   return 5;
 };
 
@@ -253,4 +253,6 @@ export const getMediumLabel = (g) =>
     ? g.cannaMedium
     : g.nutrients === 'GeneralHydroponics'
     ? g.generalHydroponicsMedium
+    : g.nutrients === 'Plagron'
+    ? g.plagronLine
     : g.soilType;

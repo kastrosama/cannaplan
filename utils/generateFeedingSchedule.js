@@ -3,6 +3,8 @@ import { generateDutchProSchedule } from './generateDutchProSchedule';
 import { generateAdvancedNutrientsSchedule } from './generateAdvancedNutrientsSchedule';
 import { generateCannaSchedule } from './generateCannaSchedule';
 import { generateGeneralHydroponicsSchedule } from './generateGeneralHydroponicsSchedule';
+import { generateChartSchedule } from './generateChartSchedule';
+import { PLAGRON_LINES } from './charts/plagron';
 
 export const generateFeedingSchedule = (growData) => {
   const { nutrients } = growData;
@@ -28,6 +30,10 @@ export const generateFeedingSchedule = (growData) => {
   
   if (nutrients === 'GeneralHydroponics') {
     return generateGeneralHydroponicsSchedule(growData);
+  }
+
+  if (nutrients === 'Plagron') {
+    return generateChartSchedule(PLAGRON_LINES[growData.plagronLine], growData);
   }
   
   return [];

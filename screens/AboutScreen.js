@@ -17,6 +17,7 @@ const BRAND_LINKS = [
   ['Advanced Nutrients', 'https://www.advancednutrients.com/'],
   ['CANNA', 'https://www.canna.com/'],
   ['General Hydroponics', 'https://generalhydroponics.com/'],
+  ['Plagron', 'https://plagron.com/'],
 ];
 
 const open = (url) => Linking.openURL(url).catch(() => {});

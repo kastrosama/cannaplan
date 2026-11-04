@@ -23,6 +23,7 @@ import CreateGrowDutchPro from './screens/CreateGrowDutchPro';
 import CreateGrowAdvancedNutrients from './screens/CreateGrowAdvancedNutrients';
 import CreateGrowCanna from './screens/CreateGrowCanna';
 import CreateGrowGeneralHydroponics from './screens/CreateGrowGeneralHydroponics';
+import CreateGrowPlagron from './screens/CreateGrowPlagron';
 import CurrentWeekSchedule from './screens/CurrentWeekSchedule';
 import FeedingScheduleSummary from './screens/FeedingScheduleSummary';
 import SettingsScreen from './screens/SettingsScreen';
@@ -97,6 +98,7 @@ function Root() {
         <Stack.Screen name="Create Grow AdvancedNutrients" component={CreateGrowAdvancedNutrients} />
         <Stack.Screen name="Create Grow CANNA" component={CreateGrowCanna} />
         <Stack.Screen name="Create Grow GeneralHydroponics" component={CreateGrowGeneralHydroponics} />
+        <Stack.Screen name="Create Grow Plagron" component={CreateGrowPlagron} />
         <Stack.Screen name="FeedingScheduleSummary" component={FeedingScheduleSummary} />
         <Stack.Screen name="Previous Grows" component={PreviousGrowsScreen} />
         <Stack.Screen name="About" component={AboutScreen} />

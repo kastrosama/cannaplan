@@ -4,7 +4,7 @@ import { View, Image, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme, useStyles, space, radius } from '../theme/theme';
-import { Screen, Header, Card, T } from '../components/ui';
+import { Screen, Header, Card, T, BrandLogo } from '../components/ui';
 import { BRANDS } from '../utils/brands';
 
 export default function SelectNutrientsScreen({ navigation }) {
@@ -16,7 +16,7 @@ export default function SelectNutrientsScreen({ navigation }) {
       {BRANDS.map((b) => (
         <Card key={b.id} onPress={() => navigation.navigate(b.route)} style={s.row}>
           <View style={s.logoTile}>
-            <Image source={b.logo} style={s.logo} resizeMode="contain" />
+            <BrandLogo brand={b} style={s.logo} />
           </View>
           <View style={{ flex: 1 }}>
             <T variant="heading">{b.name}</T>

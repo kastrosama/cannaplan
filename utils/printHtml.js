@@ -98,7 +98,7 @@ export function weekPrintHtml(grow, water) {
   }
   for (const r of mix.readings) {
     const title = r.key === 'pH' ? 'Adjust pH' : `Check ${r.label}`;
-    const sub = r.key === 'pH' ? 'Always last, after everything is mixed in' : 'Target range';
+    const sub = r.key === 'pH' ? 'Always last, after everything is mixed in' : /[–-]/.test(r.perL) ? 'Target range' : 'Target';
     rows.push(`<tr><td class="box"><span></span></td><td class="n">${n++}</td><td><b>${title}</b><div class="muted">${sub}</div></td><td class="r amt">${esc(r.perL)}</td></tr>`);
   }
 

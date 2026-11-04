@@ -408,3 +408,13 @@ const makeStyles = (t) =>
     listTitle: { fontFamily: fonts.medium, fontSize: 15 },
     listSubtitle: { fontFamily: fonts.regular, fontSize: 13, color: t.textMuted, marginTop: 2 },
   });
+
+// Brand logo, or a neat initial tile when no logo file is bundled.
+export function BrandLogo({ brand, style }) {
+  if (brand?.logo) return <Image source={brand.logo} style={[{ width: '100%', height: '100%' }, style]} resizeMode="contain" />;
+  return (
+    <View style={{ flex: 1, alignSelf: 'stretch', alignItems: 'center', justifyContent: 'center', borderRadius: 6, backgroundColor: '#2C6E2F' }}>
+      <Text style={{ fontFamily: fonts.bold, fontSize: 20, color: '#FFFFFF' }}>{(brand?.name || '?').charAt(0).toUpperCase()}</Text>
+    </View>
+  );
+}
