@@ -124,8 +124,13 @@ export default function CurrentWeekSchedule({ navigation }) {
         {/* Overview */}
         <Card>
           <T variant="small">{subtitle}</T>
+          {week ? (
+            <View style={{ marginTop: space.md }}>
+              <PhaseBadge kind={week.kind} label={o.phaseLabel} />
+            </View>
+          ) : null}
           <View style={s.heroRow}>
-            <View>
+            <View style={{ flex: 1 }}>
               <T variant="display">
                 {o.status === 'upcoming' ? 'Not started' : o.status === 'finished' ? 'Finished' : `Week ${o.week}`}
               </T>
@@ -137,7 +142,6 @@ export default function CurrentWeekSchedule({ navigation }) {
                   : `${o.total} week grow`}
               </T>
             </View>
-            {week ? <PhaseBadge kind={week.kind} label={o.phaseLabel} /> : null}
           </View>
           <PhaseProgress segments={o.segments} progress={o.progress} />
           <View style={s.pills}>
@@ -281,7 +285,7 @@ const makeStyles = (t) =>
       flexDirection: 'row',
       alignItems: 'flex-end',
       justifyContent: 'space-between',
-      marginTop: space.sm,
+      marginTop: space.xs,
       marginBottom: space.lg,
     },
     pills: { flexDirection: 'row', flexWrap: 'wrap', marginTop: space.lg, marginBottom: -8 },

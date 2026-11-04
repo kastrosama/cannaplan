@@ -175,8 +175,11 @@ const makeStyles = (t) =>
     logo: { width: '100%', height: '100%' },
     weekRow: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       alignItems: 'center',
       justifyContent: 'space-between',
+      rowGap: space.sm,
+      columnGap: space.sm,
       marginTop: space.lg,
       marginBottom: space.md,
     },

@@ -230,7 +230,7 @@ export function PhaseBadge({ kind, label }) {
   return (
     <View style={[s.badge, { backgroundColor: c + '26' }]}>
       <View style={[s.badgeDot, { backgroundColor: c }]} />
-      <Text style={[s.badgeText, { color: c }]}>{label}</Text>
+      <Text style={[s.badgeText, { color: c, flexShrink: 1 }]} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
@@ -382,6 +382,8 @@ const makeStyles = (t) =>
     },
     badge: {
       flexDirection: 'row',
+      maxWidth: '100%',
+      flexShrink: 1,
       alignItems: 'center',
       alignSelf: 'flex-start',
       paddingVertical: 4,
