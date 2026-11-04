@@ -1,6 +1,6 @@
 // ui.js — shared CannaPlan UI components built on the theme.
 
-import React from 'react';
+import React, { useContext } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,8 @@ import {
   StatusBar,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme, useStyles, fonts, space, radius } from '../theme/theme';
 
@@ -20,6 +21,11 @@ import { useTheme, useStyles, fonts, space, radius } from '../theme/theme';
 export function Screen({ children, scroll = true, header, footer, contentStyle, scrollRef, edges = ['top'] }) {
   const { theme } = useTheme();
   const s = useStyles(makeStyles);
+  const insets = useSafeAreaInsets();
+  // Inside the tab navigator the tab bar already clears Android's nav bar;
+  // stand-alone screens must leave room for it themselves (edge-to-edge).
+  const inTabs = useContext(BottomTabBarHeightContext) !== undefined;
+  const bottomInset = inTabs ? 0 : insets.bottom;
   return (
     <SafeAreaView style={s.screen} edges={edges}>
       <StatusBar
@@ -30,16 +36,16 @@ export function Screen({ children, scroll = true, header, footer, contentStyle, 
       {scroll ? (
         <ScrollView
           ref={scrollRef}
-          contentContainerStyle={[s.content, contentStyle]}
+          contentContainerStyle={[s.content, !footer && { paddingBottom: space.xxl + bottomInset }, contentStyle]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
           {children}
         </ScrollView>
       ) : (
-        <View style={[s.content, { flex: 1 }, contentStyle]}>{children}</View>
+        <View style={[s.content, { flex: 1, paddingBottom: space.xxl + (footer ? 0 : bottomInset) }, contentStyle]}>{children}</View>
       )}
-      {footer ? <View style={s.footer}>{footer}</View> : null}
+      {footer ? <View style={[s.footer, { paddingBottom: space.lg + bottomInset }]}>{footer}</View> : null}
     </SafeAreaView>
   );
 }
