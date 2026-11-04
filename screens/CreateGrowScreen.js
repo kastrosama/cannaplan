@@ -14,6 +14,7 @@ import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import moment from 'moment';
 import { useFonts } from 'expo-font';
+import { makeGrowKey, parseWater } from '../utils/growHelpers';
 
 const { width: screenWidth } = Dimensions.get('window');
 const dynamicFontSize = Math.min(Math.round(screenWidth * 0.11), 42);
@@ -29,6 +30,11 @@ export default function CreateGrowScreen({ navigation, nutrientBrand: presetBran
   const [soilType, setSoilType] = useState('');
   const [advancedNutrientsMedium, setAdvancedNutrientsMedium] = useState('');
   const [advancedNutrientsLine, setAdvancedNutrientsLine] = useState('');
+  const [cannaMedium, setCannaMedium] = useState('');
+  const [generalHydroponicsLine, setGeneralHydroponicsLine] = useState('');
+  const [generalHydroponicsIntensity, setGeneralHydroponicsIntensity] = useState('');
+  const [generalHydroponicsEnvironment, setGeneralHydroponicsEnvironment] = useState('');
+  const [generalHydroponicsMedium, setGeneralHydroponicsMedium] = useState('');
   const [waterAmount, setWaterAmount] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
 
@@ -52,9 +58,22 @@ export default function CreateGrowScreen({ navigation, nutrientBrand: presetBran
       (nutrients === 'BioBizz' && (!soilType || soilType === '-- Select Soil Type --')) ||
       (nutrients === 'AdvancedNutrients' && (!advancedNutrientsMedium || advancedNutrientsMedium === '-- Select Growing Medium --')) ||
       (nutrients === 'AdvancedNutrients' && (!advancedNutrientsLine || advancedNutrientsLine === '-- Select Nutrient Line --')) ||
+      (nutrients === 'CANNA' && (!cannaMedium || cannaMedium === '-- Select Growing Medium --')) ||
+      (nutrients === 'GeneralHydroponics' && (!generalHydroponicsLine || generalHydroponicsLine === '-- Select Nutrient Line --')) ||
+      (nutrients === 'GeneralHydroponics' && generalHydroponicsLine === 'Flora Series' && (!generalHydroponicsIntensity || generalHydroponicsIntensity === '-- Select Feeding Intensity --')) ||
+      (nutrients === 'GeneralHydroponics' && generalHydroponicsLine === 'MaxiSeries' && (!generalHydroponicsEnvironment || generalHydroponicsEnvironment === '-- Select Environment --')) ||
+      (nutrients === 'GeneralHydroponics' && generalHydroponicsLine === 'MaxiSeries' && (!generalHydroponicsIntensity || generalHydroponicsIntensity === '-- Select Feeding Intensity --')) ||
+      (nutrients === 'GeneralHydroponics' && generalHydroponicsLine === 'Organics (BioThrive)' && (!generalHydroponicsIntensity || generalHydroponicsIntensity === '-- Select Feeding Intensity --')) ||
+      (nutrients === 'GeneralHydroponics' && generalHydroponicsLine === 'FloraNova' && (!generalHydroponicsIntensity || generalHydroponicsIntensity === '-- Select Feeding Intensity --')) ||
+      (nutrients === 'GeneralHydroponics' && (!generalHydroponicsMedium || generalHydroponicsMedium === '-- Select Growing Medium --')) ||
       !waterAmount.trim()
     ) {
       alert('Please fill in all fields before generating a schedule.');
+      return;
+    }
+
+    if (isNaN(parseWater(waterAmount))) {
+      alert('Please enter a valid water amount in litres, e.g. 10 or 2,5.');
       return;
     }
 
@@ -69,13 +88,16 @@ export default function CreateGrowScreen({ navigation, nutrientBrand: presetBran
       soilType,
       advancedNutrientsSubtype: advancedNutrientsMedium,
       advancedNutrientsLine,
-      waterAmount,
+      cannaMedium,
+      generalHydroponicsLine,
+      generalHydroponicsIntensity,
+      generalHydroponicsEnvironment,
+      generalHydroponicsMedium,
+      waterAmount: String(parseWater(waterAmount)),
     };
 
     try {
-      const datePart = moment(startDate).format('YYYY-MM-DD');
-      const strainPart = strain.trim().split(' ')[0] || 'Grow';
-      const filename = `grow_${strainPart}_${datePart}`;
+      const filename = makeGrowKey(strain, startDate);
 
       await AsyncStorage.setItem('grow_current', JSON.stringify(data));
       await AsyncStorage.setItem(filename, JSON.stringify(data));
@@ -94,6 +116,13 @@ export default function CreateGrowScreen({ navigation, nutrientBrand: presetBran
     'Coco Coir': ['pH Perfect Sensi Coco Grow/Bloom', 'pH Perfect Connoisseur Coco Grow/Bloom', 'pH Perfect Grow Micro Bloom'],
     'Hydroponics': ['pH Perfect Sensi Grow/Bloom', 'pH Perfect Connoisseur Grow/Bloom', 'pH Perfect Grow Micro Bloom'],
     'Outdoor': ['Jungle Juice'],
+  };
+
+  const generalHydroponicsLineOptions = {
+    'Flora Series': ['Soil', 'Coco Coir', 'Deep Water Culture (DWC)', 'Ebb & Flow', 'NFT (Nutrient Film Technique)', 'Aeroponics'],
+    'MaxiSeries': ['Soil', 'Coco Coir', 'Deep Water Culture (DWC)', 'Ebb & Flow'],
+    'Organics (BioThrive)': ['Soil', 'Coco Coir'],
+    'FloraNova': ['Soil', 'Coco Coir', 'Deep Water Culture (DWC)', 'Ebb & Flow', 'NFT (Nutrient Film Technique)', 'Aeroponics'],
   };
 
   const pickerStyle = Platform.OS === 'android' ? { color: '#000', backgroundColor: '#fff' } : {};
@@ -177,7 +206,7 @@ export default function CreateGrowScreen({ navigation, nutrientBrand: presetBran
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
           onChange={(event, selectedDate) => {
             setShowDatePicker(false);
-            if (selectedDate) setStartDate(selectedDate.toISOString());
+            if (event.type === 'set' && selectedDate) setStartDate(moment(selectedDate).format('YYYY-MM-DD'));
           }}
         />
       )}
@@ -191,6 +220,8 @@ export default function CreateGrowScreen({ navigation, nutrientBrand: presetBran
               <Picker.Item label="BioBizz" value="BioBizz" />
               <Picker.Item label="DutchPro" value="DutchPro" />
               <Picker.Item label="AdvancedNutrients" value="AdvancedNutrients" />
+              <Picker.Item label="CANNA" value="CANNA" />
+              <Picker.Item label="General Hydroponics" value="GeneralHydroponics" />
             </Picker>
           </View>
         </>
@@ -260,6 +291,129 @@ export default function CreateGrowScreen({ navigation, nutrientBrand: presetBran
         </>
       )}
 
+      {nutrients === 'CANNA' && (
+        <>
+          <Text style={styles.label}>Growing Medium</Text>
+          <View style={styles.input}>
+            <Picker selectedValue={cannaMedium} onValueChange={setCannaMedium} style={pickerStyle}>
+              <Picker.Item label="-- Select Growing Medium --" value="" />
+              <Picker.Item label="Terra (Soil)" value="Terra" />
+              <Picker.Item label="Coco" value="Coco" />
+              <Picker.Item label="Aqua (Recirculating Hydro)" value="Aqua" />
+              <Picker.Item label="Hydro (Run-to-Waste)" value="Hydro" />
+            </Picker>
+          </View>
+        </>
+      )}
+
+      {nutrients === 'GeneralHydroponics' && (
+        <>
+          <Text style={styles.label}>Nutrient Line</Text>
+          <View style={styles.input}>
+            <Picker selectedValue={generalHydroponicsLine} onValueChange={(value) => {
+              setGeneralHydroponicsLine(value);
+              setGeneralHydroponicsIntensity('');
+              setGeneralHydroponicsEnvironment('');
+              setGeneralHydroponicsMedium('');
+            }} style={pickerStyle}>
+              <Picker.Item label="-- Select Nutrient Line --" value="" />
+              <Picker.Item label="Flora Series (3-Part)" value="Flora Series" />
+              <Picker.Item label="MaxiSeries (2-Part Powder)" value="MaxiSeries" />
+              <Picker.Item label="Organics (BioThrive)" value="Organics (BioThrive)" />
+              <Picker.Item label="FloraNova (1-Part Liquid)" value="FloraNova" />
+            </Picker>
+          </View>
+
+          {generalHydroponicsLine === 'Flora Series' && (
+            <>
+              <Text style={styles.label}>Feeding Intensity</Text>
+              <View style={styles.input}>
+                <Picker selectedValue={generalHydroponicsIntensity} onValueChange={(value) => {
+                  setGeneralHydroponicsIntensity(value);
+                  setGeneralHydroponicsMedium('');
+                }} style={pickerStyle}>
+                  <Picker.Item label="-- Select Feeding Intensity --" value="" />
+                  <Picker.Item label="Light Feed (Gentle)" value="Light" />
+                  <Picker.Item label="Medium Feed (Standard)" value="Medium" />
+                  <Picker.Item label="Aggressive Feed (Heavy)" value="Aggressive" />
+                </Picker>
+              </View>
+            </>
+          )}
+
+          {generalHydroponicsLine === 'MaxiSeries' && (
+            <>
+              <Text style={styles.label}>Environment</Text>
+              <View style={styles.input}>
+                <Picker selectedValue={generalHydroponicsEnvironment} onValueChange={(value) => {
+                  setGeneralHydroponicsEnvironment(value);
+                  setGeneralHydroponicsIntensity('');
+                  setGeneralHydroponicsMedium('');
+                }} style={pickerStyle}>
+                  <Picker.Item label="-- Select Environment --" value="" />
+                  <Picker.Item label="Indoor (Professional)" value="Indoor" />
+                  <Picker.Item label="Outdoor (Basic)" value="Outdoor" />
+                </Picker>
+              </View>
+
+              {generalHydroponicsEnvironment && (
+                <>
+                  <Text style={styles.label}>Feeding Intensity</Text>
+                  <View style={styles.input}>
+                    <Picker selectedValue={generalHydroponicsIntensity} onValueChange={(value) => {
+                      setGeneralHydroponicsIntensity(value);
+                      setGeneralHydroponicsMedium('');
+                    }} style={pickerStyle}>
+                      <Picker.Item label="-- Select Feeding Intensity --" value="" />
+                      <Picker.Item label="Light Feed (Gentle)" value="Light" />
+                      <Picker.Item label="Medium Feed (Standard)" value="Medium" />
+                      <Picker.Item label="Aggressive Feed (Heavy)" value="Aggressive" />
+                    </Picker>
+                  </View>
+                </>
+              )}
+            </>
+          )}
+
+          {generalHydroponicsLine === 'FloraNova' && (
+            <>
+              <Text style={styles.label}>Feeding Intensity</Text>
+              <View style={styles.input}>
+                <Picker selectedValue={generalHydroponicsIntensity} onValueChange={(value) => {
+                  setGeneralHydroponicsIntensity(value);
+                  setGeneralHydroponicsMedium('');
+                }} style={pickerStyle}>
+                  <Picker.Item label="-- Select Feeding Intensity --" value="" />
+                  <Picker.Item label="Light Feed (Gentle)" value="Light" />
+                  <Picker.Item label="Medium Feed (Standard)" value="Medium" />
+                  <Picker.Item label="Aggressive Feed (Heavy)" value="Aggressive" />
+                </Picker>
+              </View>
+            </>
+          )}
+
+          {generalHydroponicsLine && (
+            (generalHydroponicsLine === 'Flora Series' && generalHydroponicsIntensity) ||
+            (generalHydroponicsLine === 'MaxiSeries' && generalHydroponicsEnvironment && generalHydroponicsIntensity) ||
+            (generalHydroponicsLine === 'Organics (BioThrive)' && generalHydroponicsIntensity) ||
+            (generalHydroponicsLine === 'FloraNova' && generalHydroponicsIntensity) ||
+            (generalHydroponicsLine !== 'Flora Series' && generalHydroponicsLine !== 'MaxiSeries' && generalHydroponicsLine !== 'Organics (BioThrive)' && generalHydroponicsLine !== 'FloraNova')
+          ) && (
+            <>
+              <Text style={styles.label}>Growing Medium</Text>
+              <View style={styles.input}>
+                <Picker selectedValue={generalHydroponicsMedium} onValueChange={setGeneralHydroponicsMedium} style={pickerStyle}>
+                  <Picker.Item label="-- Select Growing Medium --" value="" />
+                  {generalHydroponicsLineOptions[generalHydroponicsLine]?.map((medium, index) => (
+                    <Picker.Item key={index} label={medium} value={medium} />
+                  ))}
+                </Picker>
+              </View>
+            </>
+          )}
+        </>
+      )}
+
       <Text style={styles.label}>Water Amount (L)</Text>
       <TextInput
         style={[styles.input]}
@@ -267,7 +421,7 @@ export default function CreateGrowScreen({ navigation, nutrientBrand: presetBran
         placeholderTextColor="#666"
         value={waterAmount}
         onChangeText={setWaterAmount}
-        keyboardType="numeric"
+        keyboardType="decimal-pad"
       />
 
       <View style={styles.buttonContainer}>

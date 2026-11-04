@@ -52,10 +52,8 @@ export default function AboutScreen({ navigation }) {
         </Text>
 
         <Text style={styles.contentText}>
-          CannaPlan includes support for BioBizz, DutchPro, and Advanced Nutrients for now, but more are coming! Just choose your nutrients and growing style, and the app builds a week-by-week schedule tailored to your setup. You'll get guidance on water amounts, feeding doses, light cycles, and even{' '}
-        pH. All in one easy view.
+          CannaPlan includes support for BioBizz, DutchPro, Advanced Nutrients, CANNA, and General Hydroponics for now, but more are coming! Just choose your nutrients and growing style, and the app builds a week-by-week schedule tailored to your setup. You'll get guidance on water amounts, feeding doses, light cycles, and even pH. All in one easy view.
         </Text>
-
 
         <Text style={styles.contentText}>
           This app is a personal project built by growers, for growers. It's 100% free, no ads, no nonsense, just tools that work.
@@ -81,6 +79,12 @@ export default function AboutScreen({ navigation }) {
         </TouchableOpacity>
         <TouchableOpacity onPress={() => openLink('https://www.advancednutrients.com/')}>
           <Text style={styles.linkText}>Advanced Nutrients Official Site</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => openLink('https://www.canna.com/')}>
+          <Text style={styles.linkText}>CANNA Official Site</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => openLink('https://generalhydroponics.com/')}>
+          <Text style={styles.linkText}>General Hydroponics Official Site</Text>
         </TouchableOpacity>
       </View>
 
@@ -161,14 +165,4 @@ const styles = StyleSheet.create({
     fontFamily: 'LemonMilkLight',
     color: '#000',
   },
-  hiddenDot: {
-    color: '#000', // Blends with contentText
-    fontSize: 12,
-    fontFamily: 'LemonMilkLight',
-  },
-  easterEggLink: {
-  fontFamily: 'LemonMilkLight',
-  color: '#000', // match normal text color
-  textDecorationLine: 'none', // keep it hidden
-},
 });

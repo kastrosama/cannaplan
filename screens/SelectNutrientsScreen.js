@@ -19,29 +19,60 @@ export default function SelectNutrientsScreen({ navigation }) {
         <Text style={[styles.title, { fontSize: dynamicFontSize }]}>CANNAPLAN</Text>
         <Text style={styles.subtitle}>Choose Your Nutrients</Text>
 
-        <TouchableOpacity
-          style={styles.brandButtonBox}
-          onPress={() => navigation.navigate('Create Grow BioBizz')}
-        >
-          <Image source={require('../assets/nutrienticons/biobizz.jpeg')} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.brandLabel}>BioBizz</Text>
-        </TouchableOpacity>
+        {/* First Row */}
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={styles.brandButtonBox}
+            onPress={() => navigation.navigate('Create Grow BioBizz')}
+          >
+            <Image source={require('../assets/nutrienticons/biobizz.jpeg')} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.brandLabel}>BioBizz</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.brandButtonBox}
-          onPress={() => navigation.navigate('Create Grow DutchPro')}
-        >
-          <Image source={require('../assets/nutrienticons/dutchpro.jpeg')} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.brandLabel}>Dutch Pro</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.brandButtonBox}
+            onPress={() => navigation.navigate('Create Grow DutchPro')}
+          >
+            <Image source={require('../assets/nutrienticons/dutchpro.jpeg')} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.brandLabel}>Dutch Pro</Text>
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity
-          style={styles.brandButtonBox}
-          onPress={() => navigation.navigate('Create Grow AdvancedNutrients')}
->
-          <Image source={require('../assets/nutrienticons/advancednutrients.jpg')} style={styles.logo} resizeMode="contain" />
-          <Text style={styles.brandLabel}>Advanced Nutrients</Text>
-        </TouchableOpacity>
+        {/* Second Row */}
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={styles.brandButtonBox}
+            onPress={() => navigation.navigate('Create Grow AdvancedNutrients')}
+          >
+            <Image source={require('../assets/nutrienticons/advancednutrients.jpg')} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.brandLabel}>Advanced Nutrients</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.brandButtonBox}
+            onPress={() => navigation.navigate('Create Grow CANNA')}
+          >
+            <Image source={require('../assets/nutrienticons/canna.jpg')} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.brandLabel}>CANNA</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Third Row */}
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={styles.brandButtonBox}
+            onPress={() => navigation.navigate('Create Grow GeneralHydroponics')}
+          >
+            <Image source={require('../assets/nutrienticons/generalhydroponics.jpg')} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.brandLabel}>General Hydroponics</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.brandButtonBox, styles.placeholderBox]}
+          >
+            <Text style={styles.placeholderText}>Coming Soon</Text>
+          </TouchableOpacity>
+        </View>
 
       </View>
 
@@ -81,23 +112,42 @@ const styles = StyleSheet.create({
     color: 'white',
     marginBottom: 30,
   },
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 20,
+  },
   brandButtonBox: {
     backgroundColor: '#fff',
     borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
     padding: 20,
-    marginBottom: 20,
-    width: '100%',
+    width: '48%', // Slightly less than 50% to allow for spacing
+    minHeight: 120, // Ensure consistent height
+  },
+  placeholderBox: {
+    backgroundColor: '#e0e0e0',
+    opacity: 0.6,
   },
   logo: {
-    width: 120,
-    height: 50,
-    marginBottom: 10,
+    width: 100, // Slightly smaller to fit better
+    height: 40,
+    marginBottom: 8,
   },
   brandLabel: {
-    fontSize: 14,
+    fontSize: 12, // Slightly smaller for better fit
     fontFamily: 'LemonMilkLight',
     color: '#000',
+    textAlign: 'center',
+    lineHeight: 14, // Better line spacing for multi-line text
+  },
+  placeholderText: {
+    fontSize: 12,
+    fontFamily: 'LemonMilkLight',
+    color: '#666',
+    textAlign: 'center',
   },
   fullWidthButton: {
     backgroundColor: '#fff',

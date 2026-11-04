@@ -1,27 +1,28 @@
 {
   "expo": {
-    "name": "cannaplan",
+    "name": "CannaPlan",
     "slug": "cannaplan",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/splash_screen.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash_screen.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#a2cb95"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kast0r.cannaplan"
     },
     "android": {
+      "versionCode": 10,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.kast0r.cannaplan"
+      "package": "com.kast0r.cannaplan",
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -31,6 +32,28 @@
       "eas": {
         "projectId": "ada71fcd-4b6a-4098-ab5d-695f0ea235d8"
       }
-    }
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash_screen.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#a2cb95"
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "savePhotosPermission": "Allow CannaPlan to save feeding schedules to your gallery.",
+          "isAccessMediaLocationEnabled": false,
+          "granularPermissions": [
+            "photo"
+          ]
+        }
+      ],
+      "expo-font"
+    ]
   }
 }

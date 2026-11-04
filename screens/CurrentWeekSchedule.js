@@ -5,11 +5,20 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Alert
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import moment from 'moment';
 import ViewShot from 'react-native-view-shot';
-import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Print from 'expo-print';
 import { useFonts } from 'expo-font';
-import { generateFeedingSchedule } from '../utils/generateFeedingSchedule';
+import {
+  getSchedule,
+  getTotalWeeks,
+  getWeekNumber,
+  getDayNumber,
+  getWeekRange,
+  getPhaseInfo,
+  getWeekRows,
+  parseWater,
+} from '../utils/growHelpers';
 
 const { width: screenWidth } = Dimensions.get('window');
 const dynamicFontSize = Math.min(Math.round(screenWidth * 0.11), 42);
@@ -40,42 +49,17 @@ export default function CurrentWeekSchedule({ navigation }) {
         const grow = JSON.parse(stored);
         setGrowData(grow);
 
-        const start = moment(grow.startDate);
-        const now = moment();
-        const weekNumber = Math.floor(moment.duration(now.diff(start)).asDays() / 7) + 1;
+        const weekNumber = getWeekNumber(grow.startDate);
         setCurrentWeek(weekNumber);
-        setDaysSinceStart(Math.floor(moment.duration(now.diff(start)).asDays()) + 1);
+        setDaysSinceStart(getDayNumber(grow.startDate));
+        setWeekRange(getWeekRange(grow.startDate, Math.max(weekNumber, 1)));
 
-        const startOfWeek = start.clone().add(weekNumber - 1, 'weeks');
-        const endOfWeek = startOfWeek.clone().add(6, 'days');
-        setWeekRange(`${startOfWeek.format('DD MMM')} – ${endOfWeek.format('DD MMM')}`);
+        const schedule = getSchedule(grow);
+        setWeekData(schedule.find((w) => w.week === weekNumber) || null);
 
-        const schedule = generateFeedingSchedule(grow);
-        const week = schedule.find(w => w.week === weekNumber);
-        setWeekData(week);
-
-        const vegWeeks = parseInt(grow.vegWeeks);
-        const flowerStart = vegWeeks + 1;
-        const flushWeek = vegWeeks + 9;
-        const harvestWeek = vegWeeks + 10;
-
-        if (weekNumber <= vegWeeks) {
-          setPhaseInfo(`Vegetation Week ${weekNumber} of ${vegWeeks}`);
-          setLightCycle('24/0');
-        } else if (weekNumber >= flowerStart && weekNumber <= vegWeeks + 8) {
-          const flowerWeek = weekNumber - vegWeeks;
-          setPhaseInfo(`Flowering Week ${flowerWeek} of 8`);
-          setLightCycle('12/12');
-        } else if (weekNumber === flushWeek) {
-          setPhaseInfo('Flush Week');
-          setLightCycle('12/12');
-        } else if (weekNumber === harvestWeek) {
-          setPhaseInfo('Harvest Week');
-          setLightCycle('-');
-        } else {
-          setPhaseInfo('Schedule Complete');
-          setLightCycle('-');
-        }
+        const info = getPhaseInfo(grow, schedule, weekNumber);
+        setPhaseInfo(info.label);
+        setLightCycle(info.light);
       } catch (err) {
         console.error('Failed to load grow data or generate schedule', err);
       }
@@ -100,12 +84,13 @@ export default function CurrentWeekSchedule({ navigation }) {
         const fileUri = FileSystem.documentDirectory + filename;
         await FileSystem.copyAsync({ from: uri, to: fileUri });
 
-        const { status } = await MediaLibrary.requestPermissionsAsync();
-        if (status === 'granted') {
-          await MediaLibrary.saveToLibraryAsync(fileUri);
+        const { status } = await MediaLibrary.requestPermissionsAsync(true);
+        if (status !== 'granted') {
+          Alert.alert('Permission needed', 'Allow photo access to save the schedule to your gallery.');
+          return;
         }
-
-        Alert.alert('Exported!', `Saved to device as ${filename}`);
+        await MediaLibrary.saveToLibraryAsync(fileUri);
+        Alert.alert('Exported!', `Saved to your gallery as ${filename}`);
       } else if (format === 'pdf') {
         const imageBase64 = await FileSystem.readAsStringAsync(uri, {
           encoding: FileSystem.EncodingType.Base64,
@@ -136,16 +121,24 @@ export default function CurrentWeekSchedule({ navigation }) {
         ? growData.dutchProSubtype
         : growData.nutrients === 'AdvancedNutrients'
         ? growData.advancedNutrientsSubtype
+        : growData.nutrients === 'CANNA'
+        ? growData.cannaMedium
+        : growData.nutrients === 'GeneralHydroponics'
+        ? growData.generalHydroponicsMedium
         : growData.soilType;
 
-    const totalWeeks = parseInt(growData.vegWeeks) + 8 + 2;
+    const nutrientDisplay = growData.nutrients === 'GeneralHydroponics' ? 'General Hydro' : growData.nutrients;
+
+    const totalWeeks = getTotalWeeks(growData);
 
     const summaryItems = [
       ['STRAIN', growData.strain?.toUpperCase() || '-'],
       ['SEED BANK', growData.seedBank || '-'],
       ['TYPE', growData.type || '-'],
-      ['SOIL', soilLabel],
-      ['NUTRIENTS', growData.nutrients || '-'],
+      ['MEDIUM', soilLabel],
+      ['NUTRIENTS', nutrientDisplay || '-'],
+      ...(growData.nutrients === 'GeneralHydroponics' && growData.generalHydroponicsLine ? 
+        [['NUTRIENT LINE', growData.generalHydroponicsLine]] : []),
       ['WATER', `${growData.waterAmount || '-'} L`],
       ['START DATE', moment(growData.startDate).format('DD-MM-YYYY')],
       ['DAYS SINCE START', daysSinceStart],
@@ -180,35 +173,29 @@ export default function CurrentWeekSchedule({ navigation }) {
       );
     }
 
-    const water = parseFloat(growData.waterAmount);
-    const phase = weekData.phase;
+    const water = parseWater(growData.waterAmount);
+    const { kind } = weekData;
+    const rows = getWeekRows(weekData, water);
 
     return (
       <View style={styles.section}>
+        {weekData.stage ? <Text style={styles.sectionText}>Stage: {weekData.stage}</Text> : null}
+
         <View style={styles.rowHeader}>
           <Text style={[styles.cell, styles.boldLabel, styles.borderedCell]}>NUTRIENT</Text>
-          <Text style={[styles.cell, styles.boldLabel, styles.borderedCell]}>ML/L</Text>
-          <Text style={[styles.cell, styles.boldLabel]}>TOTAL ML</Text>
+          <Text style={[styles.cell, styles.boldLabel, styles.borderedCell]}>PER L</Text>
+          <Text style={[styles.cell, styles.boldLabel]}>TOTAL</Text>
         </View>
 
-        {phase === 'Flush Week' && (
-          <>
-            <View style={styles.rowWithBorders}>
-              <Text style={[styles.cell, styles.borderedCell]}>Water</Text>
-              <Text style={[styles.cell, styles.borderedCell]}>—</Text>
-              <Text style={styles.cell}>—</Text>
-            </View>
-            {'pH' in weekData && (
-              <View style={styles.rowWithBorders}>
-                <Text style={[styles.cell, styles.borderedCell]}>pH</Text>
-                <Text style={[styles.cell, styles.borderedCell]}>{weekData.pH}</Text>
-                <Text style={styles.cell}>—</Text>
-              </View>
-            )}
-          </>
+        {kind === 'flush' && (
+          <View style={styles.rowWithBorders}>
+            <Text style={[styles.cell, styles.borderedCell]}>Water only</Text>
+            <Text style={[styles.cell, styles.borderedCell]}>—</Text>
+            <Text style={styles.cell}>—</Text>
+          </View>
         )}
 
-        {phase === 'Harvest Week' && (
+        {kind === 'harvest' && (
           <View style={styles.rowWithBorders}>
             <Text style={[styles.cell, styles.borderedCell]}>HARVEST</Text>
             <Text style={[styles.cell, styles.borderedCell]}>—</Text>
@@ -216,32 +203,15 @@ export default function CurrentWeekSchedule({ navigation }) {
           </View>
         )}
 
-        {!phase && Object.entries(weekData)
-          .filter(([key]) => !['week', 'phase'].includes(key.toLowerCase()))
-          .map(([key, val]) => {
-            if (key === 'pH') {
-              return (
-                <View style={styles.rowWithBorders} key={key}>
-                  <Text style={[styles.cell, styles.borderedCell]}>{key.toUpperCase()}</Text>
-                  <Text style={[styles.cell, styles.borderedCell]}>{val}</Text>
-                  <Text style={styles.cell}>—</Text>
-                </View>
-              );
-            }
-
-            const numericVal = parseFloat(val);
-            const total = !isNaN(numericVal) && !isNaN(water)
-              ? (numericVal * water).toFixed(1)
-              : 'N/A';
-
-            return (
-              <View style={styles.rowWithBorders} key={key}>
-                <Text style={[styles.cell, styles.borderedCell]}>{key.toUpperCase()}</Text>
-                <Text style={[styles.cell, styles.borderedCell]}>{numericVal}</Text>
-                <Text style={styles.cell}>{total}</Text>
-              </View>
-            );
-          })}
+        {rows
+          .filter((r) => kind !== 'flush' || r.reading)
+          .map((r) => (
+            <View style={styles.rowWithBorders} key={r.key}>
+              <Text style={[styles.cell, styles.borderedCell, !r.reading && { fontSize: 10 }]}>{r.label}</Text>
+              <Text style={[styles.cell, styles.borderedCell]}>{r.perL}</Text>
+              <Text style={styles.cell}>{r.total}</Text>
+            </View>
+          ))}
       </View>
     );
   };

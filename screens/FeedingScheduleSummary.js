@@ -14,10 +14,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import moment from 'moment';
 import * as Print from 'expo-print';
 import ViewShot from 'react-native-view-shot';
-import * as MediaLibrary from 'expo-media-library';
-import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library/legacy';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useFonts } from 'expo-font';
-import { generateFeedingSchedule } from '../utils/generateFeedingSchedule';
+import { getSchedule, getWeekNumber, getWeekRows, parseWater } from '../utils/growHelpers';
 
 const { width: screenWidth } = Dimensions.get('window');
 const dynamicFontSize = Math.min(Math.round(screenWidth * 0.11), 42);
@@ -40,13 +40,8 @@ export default function FeedingScheduleSummary({ navigation }) {
         if (saved) {
           const data = JSON.parse(saved);
           setGrowData(data);
-          const fullSchedule = generateFeedingSchedule(data);
-          setSchedule(fullSchedule);
-
-          const start = moment(data.startDate, 'YYYY-MM-DD');
-          const now = moment();
-          const weekIndex = now.diff(start, 'weeks');
-          setCurrentWeekIndex(weekIndex);
+          setSchedule(getSchedule(data));
+          setCurrentWeekIndex(getWeekNumber(data.startDate) - 1);
         }
       } catch (e) {
         console.error('Failed to load grow data', e);
@@ -59,18 +54,26 @@ export default function FeedingScheduleSummary({ navigation }) {
     if (!growData) return null;
 
     const soilLabel =
-  growData.nutrients === 'DutchPro'
-    ? growData.dutchProSubtype
-    : growData.nutrients === 'AdvancedNutrients'
-    ? growData.advancedNutrientsSubtype
-    : growData.soilType;
+      growData.nutrients === 'DutchPro'
+        ? growData.dutchProSubtype
+        : growData.nutrients === 'AdvancedNutrients'
+        ? growData.advancedNutrientsSubtype
+        : growData.nutrients === 'CANNA'
+        ? growData.cannaMedium
+        : growData.nutrients === 'GeneralHydroponics'
+        ? growData.generalHydroponicsMedium
+        : growData.soilType;
+
+    const nutrientDisplay = growData.nutrients === 'GeneralHydroponics' ? 'General Hydro' : growData.nutrients;
 
     const summaryItems = [
       ['STRAIN', growData.strain?.toUpperCase() || '-'],
       ['SEED BANK', growData.seedBank || '-'],
       ['TYPE', growData.type || '-'],
-      ['SOIL', soilLabel || '-'],
-      ['NUTRIENTS', growData.nutrients || '-'],
+      ['MEDIUM', soilLabel || '-'],
+      ['NUTRIENTS', nutrientDisplay || '-'],
+      ...(growData.nutrients === 'GeneralHydroponics' && growData.generalHydroponicsLine ? 
+        [['NUTRIENT LINE', growData.generalHydroponicsLine]] : []),
       ['WATER', `${growData.waterAmount || '-'} L`],
       ['START DATE', moment(growData.startDate).format('DD-MM-YYYY')],
     ];
@@ -111,9 +114,13 @@ export default function FeedingScheduleSummary({ navigation }) {
 
   const handleExportAsJPG = async () => {
     try {
+      const { status } = await MediaLibrary.requestPermissionsAsync(true);
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Allow photo access to save the schedule to your gallery.');
+        return;
+      }
       const uri = await viewShotRef.current.capture();
-      const asset = await MediaLibrary.createAssetAsync(uri);
-      await MediaLibrary.createAlbumAsync('Cannaplan', asset, false);
+      await MediaLibrary.saveToLibraryAsync(uri);
       Alert.alert('Saved', 'Feeding schedule saved to gallery!');
     } catch (error) {
       console.error('Error saving JPG:', error);
@@ -133,15 +140,12 @@ export default function FeedingScheduleSummary({ navigation }) {
           {renderGrowSummary()}
 
           {schedule.map((week) => {
-            const isFlush = week.phase === 'Flush Week';
-            const isHarvest = week.phase === 'Harvest Week';
+            const isFlush = week.kind === 'flush';
+            const isHarvest = week.kind === 'harvest';
+            const isVegetation = week.kind === 'veg';
+            const isFlowering = week.kind === 'flower';
 
-            const vegWeeks = parseInt(growData.vegWeeks || 0);
-            const floweringStart = vegWeeks + 1;
-            const isVegetation = week.week <= vegWeeks;
-            const isFlowering = week.week >= floweringStart && week.week <= vegWeeks + 8;
-
-            const water = parseFloat(growData.waterAmount);
+            const water = parseWater(growData.waterAmount);
             const weekIndex = week.week - 1;
 
             const isPast = weekIndex < currentWeekIndex;
@@ -157,6 +161,7 @@ export default function FeedingScheduleSummary({ navigation }) {
                 ]}
               >
                 <Text style={styles.weekTitle}>Week {week.week}</Text>
+                {week.stage ? <Text style={styles.phaseLabel}>{week.stage}</Text> : null}
 
                 {isVegetation && <Text style={styles.phaseLabel}>Vegetation Phase</Text>}
                 {isFlowering && <Text style={styles.phaseLabel}>Flowering Phase</Text>}
@@ -174,36 +179,17 @@ export default function FeedingScheduleSummary({ navigation }) {
                   <>
                     <View style={styles.rowHeader}>
                       <Text style={[styles.cell, styles.boldLabel, styles.borderedCell]}>Nutrient</Text>
-                      <Text style={[styles.cell, styles.boldLabel, styles.borderedCell]}>ml/L</Text>
-                      <Text style={[styles.cell, styles.boldLabel]}>Total ml</Text>
+                      <Text style={[styles.cell, styles.boldLabel, styles.borderedCell]}>Per L</Text>
+                      <Text style={[styles.cell, styles.boldLabel]}>Total</Text>
                     </View>
 
-                    {Object.entries(week)
-                      .filter(([key]) => !['week', 'phase', 'current', 'past', 'floweringStart'].includes(key))
-                      .map(([key, val]) => {
-                        if (key === 'pH') {
-                          return (
-                            <View style={styles.row} key={key}>
-                              <Text style={[styles.cell, styles.borderedCell]}>pH</Text>
-                              <Text style={[styles.cell, styles.borderedCell]}>{val}</Text>
-                              <Text style={styles.cell}>—</Text>
-                            </View>
-                          );
-                        }
-
-                        const numericVal = parseFloat(val);
-                        const total = !isNaN(numericVal) && !isNaN(water)
-                          ? (numericVal * water).toFixed(1)
-                          : 'N/A';
-
-                        return (
-                          <View style={styles.row} key={key}>
-                            <Text style={[styles.cell, styles.borderedCell]}>{key.toUpperCase()}</Text>
-                            <Text style={[styles.cell, styles.borderedCell]}>{numericVal}</Text>
-                            <Text style={styles.cell}>{total}</Text>
-                          </View>
-                        );
-                      })}
+                    {getWeekRows(week, water).map((r) => (
+                      <View style={styles.row} key={r.key}>
+                        <Text style={[styles.cell, styles.borderedCell, !r.reading && { fontSize: 10 }]}>{r.label}</Text>
+                        <Text style={[styles.cell, styles.borderedCell]}>{r.perL}</Text>
+                        <Text style={styles.cell}>{r.total}</Text>
+                      </View>
+                    ))}
                   </>
                 )}
               </View>

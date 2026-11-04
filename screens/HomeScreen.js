@@ -11,6 +11,7 @@ import {
   Linking,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getTotalWeeks } from '../utils/growHelpers';
 import { useFonts } from 'expo-font';
 import moment from 'moment';
 
@@ -44,7 +45,7 @@ export default function HomeScreen({ navigation }) {
         const today = moment();
         const matchingGrow = grows.find(g => {
           const start = moment(g.startDate);
-          const totalWeeks = parseInt(g.vegWeeks) + 8 + 2;
+          const totalWeeks = getTotalWeeks(g);
           const end = start.clone().add(totalWeeks, 'weeks');
           return today.isSameOrAfter(start) && today.isSameOrBefore(end);
         });

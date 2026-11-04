@@ -7,8 +7,8 @@ import {
   TouchableOpacity,
   Alert,
   Dimensions,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Checkbox from 'expo-checkbox';
 import moment from 'moment';
@@ -35,11 +35,20 @@ export default function PreviousGrowsScreen({ navigation }) {
         growKeys.map(async (key) => {
           const item = await AsyncStorage.getItem(key);
           const data = JSON.parse(item);
+          
+          // Handle medium/soil type for all nutrient brands
+          const mediumType = data.soilType || 
+                            data.dutchProSubtype || 
+                            data.cannaMedium || 
+                            data.advancedNutrientsSubtype ||
+                            data.generalHydroponicsMedium || 
+                            'Unknown';
+          
           return {
             key,
             strain: data.strain || 'Unknown',
             seedBank: data.seedBank || 'Unknown',
-            soilType: data.soilType || data.dutchProSubtype || 'Unknown',
+            soilType: mediumType,
             nutrients: data.nutrients || 'Unknown',
             startDate: data.startDate || '',
             sortDate: new Date(data.startDate),
@@ -114,7 +123,7 @@ export default function PreviousGrowsScreen({ navigation }) {
         <Text style={styles.cardTitle}>{item.strain}</Text>
         <Text style={styles.cardDetail}>Seed Bank: {item.seedBank}</Text>
         <Text style={styles.cardDetail}>Nutrients: {item.nutrients}</Text>
-        <Text style={styles.cardDetail}>Soil: {item.soilType}</Text>
+        <Text style={styles.cardDetail}>Medium: {item.soilType}</Text>
         <Text style={styles.cardDetail}>Started: {moment(item.startDate).format('DD MMM YYYY')}</Text>
       </TouchableOpacity>
       <Checkbox

@@ -1,7 +1,8 @@
+// app.js
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import HomeScreen from './screens/HomeScreen';
 import CreateGrowBioBizz from './screens/CreateGrowBioBizz';
 import CreateGrowDutchPro from './screens/CreateGrowDutchPro';
@@ -12,12 +13,15 @@ import SettingsScreen from './screens/SettingsScreen';
 import PreviousGrowsScreen from './screens/PreviousGrowsScreen';
 import AboutScreen from './screens/AboutScreen';
 import CreateGrowAdvancedNutrients from './screens/CreateGrowAdvancedNutrients';
-import EasterEggScreen from './screens/EasterEggScreen'; 
+import CreateGrowCanna from './screens/CreateGrowCanna';
+import CreateGrowGeneralHydroponics from './screens/CreateGrowGeneralHydroponics';
+import EasterEggScreen from './screens/EasterEggScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
+    <SafeAreaProvider>
     <NavigationContainer>
       <Stack.Navigator
         initialRouteName="Home"
@@ -29,14 +33,17 @@ export default function App() {
         <Stack.Screen name="Select Nutrients" component={SelectNutrientsScreen} />
         <Stack.Screen name="Create Grow BioBizz" component={CreateGrowBioBizz} />
         <Stack.Screen name="Create Grow DutchPro" component={CreateGrowDutchPro} />
+        <Stack.Screen name="Create Grow AdvancedNutrients" component={CreateGrowAdvancedNutrients} />
+        <Stack.Screen name="Create Grow CANNA" component={CreateGrowCanna} />
+        <Stack.Screen name="Create Grow GeneralHydroponics" component={CreateGrowGeneralHydroponics} />
         <Stack.Screen name="Feeding Schedule" component={CurrentWeekSchedule} />
         <Stack.Screen name="FeedingScheduleSummary" component={FeedingScheduleSummary} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="Previous Grows" component={PreviousGrowsScreen} />
         <Stack.Screen name="About" component={AboutScreen} />
-        <Stack.Screen name="Create Grow AdvancedNutrients" component={CreateGrowAdvancedNutrients} />
         <Stack.Screen name="EasterEgg" component={EasterEggScreen} />
       </Stack.Navigator>
     </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
