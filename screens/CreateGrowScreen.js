@@ -8,6 +8,7 @@ import moment from 'moment';
 
 import { useTheme, useStyles, space, radius, fonts } from '../theme/theme';
 import { Screen, Header, Card, T, Button, ChipGroup, Field, Input, SectionTitle, BrandLogo } from '../components/ui';
+import { anRecipesFor } from '../utils/charts/advancednutrients';
 import { PLAGRON_LINES } from '../utils/charts/plagron';
 import { makeGrowKey, parseWater, getTotalWeeks, waterInputToLitres } from '../utils/growHelpers';
 import { brandById } from '../utils/brands';
@@ -36,10 +37,10 @@ const YES_NO = [
 ];
 const AN_MEDIUMS = ['Soil – Organic', 'Soil – Light Mix', 'Coco Coir', 'Hydroponics', 'Outdoor'];
 const AN_LINES = {
-  'Soil – Organic': ['OG Organics (Iguana Juice)'],
-  'Soil – Light Mix': ['pH Perfect Sensi Grow/Bloom', 'pH Perfect Grow Micro Bloom'],
+  'Soil – Organic': ['OG Organics (Iguana Juice)', 'Sensi Terra'],
+  'Soil – Light Mix': ['pH Perfect Sensi Grow/Bloom', 'pH Perfect Connoisseur Grow/Bloom', 'pH Perfect Grow Micro Bloom', 'Sensi Terra', 'Starter Kit'],
   'Coco Coir': ['pH Perfect Sensi Coco Grow/Bloom', 'pH Perfect Connoisseur Coco Grow/Bloom', 'pH Perfect Grow Micro Bloom'],
-  Hydroponics: ['pH Perfect Sensi Grow/Bloom', 'pH Perfect Connoisseur Grow/Bloom', 'pH Perfect Grow Micro Bloom'],
+  Hydroponics: ['pH Perfect Sensi Grow/Bloom', 'pH Perfect Connoisseur Grow/Bloom', 'pH Perfect Grow Micro Bloom', 'Starter Kit'],
   Outdoor: ['Jungle Juice'],
 };
 const CANNA_MEDIUMS = [
@@ -87,6 +88,7 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
   const [bioBizzSoftWater, setBioBizzSoftWater] = useState('no');
   const [anMedium, setAnMedium] = useState('');
   const [anLine, setAnLine] = useState('');
+  const [anRecipe, setAnRecipe] = useState('Top Shelf');
   const [cannaMedium, setCannaMedium] = useState('');
   const [ghLine, setGhLine] = useState('');
   const [ghIntensity, setGhIntensity] = useState('');
@@ -143,6 +145,7 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
         : {}),
       advancedNutrientsSubtype: anMedium,
       advancedNutrientsLine: anLine,
+      ...(anRecipesFor(anLine).length > 1 ? { advancedNutrientsRecipe: anRecipe } : {}),
       cannaMedium,
       generalHydroponicsLine: ghLine,
       generalHydroponicsIntensity: ghIntensity,
@@ -246,6 +249,11 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
             {anMedium ? (
               <Field label="Nutrient line">
                 <ChipGroup options={AN_LINES[anMedium]} value={anLine} onChange={setAnLine} />
+              </Field>
+            ) : null}
+            {anRecipesFor(anLine).length > 1 ? (
+              <Field label="Recipe" hint="Top Shelf: base + core boosters. Master: adds the full additive range.">
+                <ChipGroup options={anRecipesFor(anLine)} value={anRecipe} onChange={setAnRecipe} />
               </Field>
             ) : null}
           </>
