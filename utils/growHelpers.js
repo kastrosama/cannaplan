@@ -4,6 +4,7 @@
 
 import moment from 'moment';
 import { generateFeedingSchedule } from './generateFeedingSchedule';
+import { normalizeDutchProSubtype } from './charts/dutchpro';
 
 // Keys on a schedule week that are not nutrients
 export const META_KEYS = ['week', 'phase', 'stage', 'kind'];
@@ -153,6 +154,16 @@ export const describeDose = (value, water, units = 'metric') => {
     return { perL: `${per(value)} ml`, total: noWater ? '—' : `${tot(value * water)} ml` };
   }
 
+  // Charted range with guidance, e.g. Dutch Pro base feed { min, max, unit, hint }
+  if (value && typeof value === 'object' && value.min != null) {
+    const u = value.unit || 'ml';
+    return {
+      perL: `${per(value.min)}–${per(value.max)} ${u}`,
+      note: value.hint,
+      total: noWater ? '—' : `${tot(value.min * water)}–${tot(value.max * water)} ${u}`,
+    };
+  }
+
   const text = String(value ?? '').trim();
   const lower = text.toLowerCase();
   const nums = (text.match(/\d+(?:[.,]\d+)?/g) || []).map((s) => parseFloat(s.replace(',', '.')));
@@ -273,7 +284,7 @@ export const getGrowOverview = (growData, date = moment()) => {
 
 export const getMediumLabel = (g) =>
   g.nutrients === 'DutchPro'
-    ? g.dutchProSubtype
+    ? normalizeDutchProSubtype(g.dutchProSubtype)
     : g.nutrients === 'AdvancedNutrients'
     ? g.advancedNutrientsSubtype
     : g.nutrients === 'CANNA'

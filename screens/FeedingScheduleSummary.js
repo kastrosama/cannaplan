@@ -135,10 +135,10 @@ export default function FeedingScheduleSummary({ navigation }) {
                   <PhaseBadge kind={w.kind} label={w.phase.replace(' Week', '')} />
                 </View>
 
-                {w.kind === 'flush' ? <T variant="muted">Water only</T> : null}
+                {w.kind === 'flush' && !mix.doses.length ? <T variant="muted">Water only</T> : null}
                 {w.kind === 'harvest' ? <T variant="muted">No feeding · harvest, dry and cure</T> : null}
 
-                {w.kind !== 'flush' && w.kind !== 'harvest'
+                {w.kind !== 'harvest'
                   ? mix.doses.map((r) => (
                       <View key={r.key} style={s.row}>
                         <View style={{ flex: 1, paddingRight: space.md }}>

@@ -1,5 +1,5 @@
 import { generateBioBizzSchedule } from './charts/biobizz';
-import { generateDutchProSchedule } from './generateDutchProSchedule';
+import { generateDutchProSchedule } from './charts/dutchpro';
 import { generateAdvancedNutrientsSchedule } from './generateAdvancedNutrientsSchedule';
 import { generateCannaSchedule } from './generateCannaSchedule';
 import { generateGeneralHydroponicsSchedule } from './generateGeneralHydroponicsSchedule';

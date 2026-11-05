@@ -18,12 +18,10 @@ const AUTO_WEEKS = [8, 9, 10, 11, 12].map((n) => ({ label: `${n} wk`, value: Str
 const WATER_PRESETS = ['5', '10', '20', '50'];
 
 const DUTCHPRO_TYPES = [
-  'All-Mix - Hard Water',
-  'All-Mix - RO / Soft Water',
-  'Light-Mix - Hard Water',
-  'Light-Mix - RO / Soft Water',
-  'Hydro / Coco - Hard Water',
-  'Hydro / Coco - RO / Soft Water',
+  { label: 'Soil · Hard water', value: 'Soil - Hard Water' },
+  { label: 'Soil · RO / soft water', value: 'Soil - RO / Soft Water' },
+  { label: 'Hydro / Coco · Hard water', value: 'Hydro / Coco - Hard Water' },
+  { label: 'Hydro / Coco · RO / soft water', value: 'Hydro / Coco - RO / Soft Water' },
 ];
 const BIOBIZZ_SOIL_OPTIONS = [
   { label: 'Light·Mix', value: 'Light-Mix' },

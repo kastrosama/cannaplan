@@ -89,7 +89,7 @@ export function weekPrintHtml(grow, water, units = 'metric') {
   let n = 1;
   const rows = [];
   rows.push(`<tr><td class="box"><span></span></td><td class="n">${n++}</td><td><b>Fill with ${litres(L)} of water</b><div class="muted">Room temperature, ideally rested</div></td><td class="r"></td></tr>`);
-  if (w.kind === 'flush') {
+  if (w.kind === 'flush' && !mix.doses.length) {
     rows.push(`<tr><td class="box"><span></span></td><td class="n">${n++}</td><td><b>Water only, no nutrients</b><div class="muted">Flush week</div></td><td class="r"></td></tr>`);
   } else {
     for (const r of mix.doses) {
@@ -130,7 +130,7 @@ export function schedulePrintHtml(grow, units = 'metric') {
     const isNow = w.week === o.week;
     const date = moment(grow.startDate).add(w.week - 1, 'weeks').format('D MMM');
     let rows = '';
-    if (w.kind === 'flush') rows = `<tr><td colspan="3">Water only</td></tr>`;
+    if (w.kind === 'flush' && !mix.doses.length) rows = `<tr><td colspan="3">Water only</td></tr>`;
     else if (w.kind === 'harvest') rows = `<tr><td colspan="3">No feeding · harvest, dry and cure</td></tr>`;
     else
       rows = mix.doses

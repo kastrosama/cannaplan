@@ -27,11 +27,16 @@ export const reminderContent = (grow, schedule, date, units = 'metric') => {
   if (week.kind === 'harvest') {
     return { title: `🌾 Harvest week: ${name}`, body: 'No feeding. Check the trichomes, then harvest, dry and cure.' };
   }
-  if (week.kind === 'flush') {
-    return { title: `💧 Flush day: ${name}`, body: `Week ${weekNo}: plain water only, ${formatWater(water, units)}. Adjust pH last.` };
-  }
-
   const { doses, readings } = getMixingRows(week, water, units);
+
+  if (week.kind === 'flush') {
+    const extras = doses.map((r) => `${r.key} ${r.total}`).join(' · ');
+    const ph = readings.find((r) => r.key === 'pH');
+    return {
+      title: `💧 Flush day: ${name}`,
+      body: `Week ${weekNo}: ${formatWater(water, units)} plain water${extras ? ` + ${extras}` : ' only'}${ph ? ` · pH ${ph.perL}` : ''}.`,
+    };
+  }
   const shown = doses.slice(0, 3).map((r) => `${r.key} ${r.total}`);
   const more = doses.length > 3 ? ` +${doses.length - 3} more` : '';
   const ph = readings.find((r) => r.key === 'pH');

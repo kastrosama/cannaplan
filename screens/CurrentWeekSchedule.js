@@ -187,7 +187,7 @@ export default function CurrentWeekSchedule({ navigation, route }) {
             <Card style={{ paddingVertical: space.sm }}>
               <MixStep n={step++} title={`Fill with ${litres} of water`} detail="Room temperature, ideally rested" done={done.water} onPress={() => toggle('water')} />
 
-              {week.kind === 'flush'
+              {week.kind === 'flush' && !mix.doses.length
                 ? <MixStep n={step++} title="Water only, no nutrients" detail="Flush week: let the plant use up what's in the medium" done={done.flush} onPress={() => toggle('flush')} />
                 : mix.doses.map((r) => (
                     <MixStep
