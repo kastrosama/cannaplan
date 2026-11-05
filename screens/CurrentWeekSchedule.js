@@ -22,19 +22,24 @@ import {
   InfoPill,
   EmptyState,
   SectionTitle,
+  ListRow,
 } from '../components/ui';
-import { getGrowOverview, getMixingRows, getWeekRange, getMediumLabel, parseWater } from '../utils/growHelpers';
-import { loadAllGrows, getCurrentGrow, setCurrentGrow } from '../utils/growStore';
+import { getGrowOverview, getMixingRows, getWeekRange, getMediumLabel, parseWater, formatWater, unitWord, GAL } from '../utils/growHelpers';
+import { loadReminderConfigs } from '../utils/reminders';
+import { describeReminder } from '../utils/reminderPlan';
+import { loadAllGrows, getCurrentGrow, setCurrentGrow, resolveGrowKey } from '../utils/growStore';
 import { brandName } from '../utils/brands';
 
-export default function CurrentWeekSchedule({ navigation }) {
-  const { theme } = useTheme();
+export default function CurrentWeekSchedule({ navigation, route }) {
+  const { theme, units } = useTheme();
+  const refresh = route?.params?.refresh;
   const s = useStyles(makeStyles);
   const shotRef = useRef();
 
   const [grow, setGrow] = useState(undefined); // undefined = loading, null = none
   const [water, setWater] = useState(NaN);
   const [done, setDone] = useState({});
+  const [reminder, setReminder] = useState(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -46,19 +51,21 @@ export default function CurrentWeekSchedule({ navigation }) {
           const active = all.find((x) => getGrowOverview(x).status === 'active');
           if (active) {
             await setCurrentGrow(active);
-            const { key, ...rest } = active;
-            g = rest;
+            g = active;
           }
         }
         if (!alive) return;
         setGrow(g || null);
         setWater(g ? parseWater(g.waterAmount) : NaN);
         setDone({});
+        const key = await resolveGrowKey(g);
+        const cfgs = await loadReminderConfigs();
+        if (alive) setReminder(key ? cfgs[key] || null : null);
       })().catch(() => alive && setGrow(null));
       return () => {
         alive = false;
       };
-    }, [])
+    }, [refresh])
   );
 
   if (grow === undefined) return <Screen header={<Header title="This week" />} />;
@@ -79,10 +86,20 @@ export default function CurrentWeekSchedule({ navigation }) {
 
   const o = getGrowOverview(grow);
   const week = o.current;
-  const mix = week ? getMixingRows(week, water) : { doses: [], sprays: [], readings: [] };
-  const litres = isNaN(water) ? '—' : `${formatL(water)} L`;
+  const mix = week ? getMixingRows(week, water, units) : { doses: [], sprays: [], readings: [] };
+  const litres = formatWater(water, units);
+  const per = unitWord(units);
   const toggle = (k) => setDone((d) => ({ ...d, [k]: !d[k] }));
-  const changeWater = (delta) => setWater((w) => Math.max(0.5, Math.round(((isNaN(w) ? 10 : w) + delta) * 2) / 2));
+  // Steps of 0.5 L, or 0.5 gal in US mode. Water is always kept in litres.
+  const changeWater = (dir) =>
+    setWater((w) => {
+      const base = isNaN(w) ? 10 : w;
+      if (units === 'us') {
+        const gal = Math.max(0.5, Math.round((base / GAL + dir * 0.5) * 2) / 2);
+        return gal * GAL;
+      }
+      return Math.max(0.5, Math.round((base + dir * 0.5) * 2) / 2);
+    });
 
   const capture = async () => {
     const uri = await shotRef.current.capture();
@@ -106,7 +123,7 @@ export default function CurrentWeekSchedule({ navigation }) {
 
   const print = async () => {
     try {
-      await Print.printAsync({ html: weekPrintHtml(grow, water) });
+      await Print.printAsync({ html: weekPrintHtml(grow, water, units) });
     } catch (e) {
       console.error('Print failed:', e);
     }
@@ -154,11 +171,11 @@ export default function CurrentWeekSchedule({ navigation }) {
             <SectionTitle
               action={
                 <View style={s.stepper}>
-                  <Pressable onPress={() => changeWater(-0.5)} hitSlop={8} style={s.stepBtn}>
+                  <Pressable onPress={() => changeWater(-1)} hitSlop={8} style={s.stepBtn}>
                     <Ionicons name="remove" size={18} color={theme.text} />
                   </Pressable>
                   <T variant="heading" style={{ minWidth: 56, textAlign: 'center' }}>{litres}</T>
-                  <Pressable onPress={() => changeWater(0.5)} hitSlop={8} style={s.stepBtn}>
+                  <Pressable onPress={() => changeWater(1)} hitSlop={8} style={s.stepBtn}>
                     <Ionicons name="add" size={18} color={theme.text} />
                   </Pressable>
                 </View>
@@ -177,7 +194,7 @@ export default function CurrentWeekSchedule({ navigation }) {
                       key={r.key}
                       n={step++}
                       title={r.key}
-                      detail={`${r.perL} per litre${r.note ? ` · ${r.note}` : ''}`}
+                      detail={`${r.perL} per ${per}${r.note ? ` · ${r.note}` : ''}`}
                       amount={r.total}
                       done={done[r.key]}
                       onPress={() => toggle(r.key)}
@@ -239,7 +256,15 @@ export default function CurrentWeekSchedule({ navigation }) {
         ) : null}
       </ViewShot>
 
-      <Button title="Full schedule" icon="calendar" variant="secondary" onPress={() => navigation.navigate('FeedingScheduleSummary')} style={{ marginTop: space.sm }} />
+      <Card style={{ paddingVertical: 2, marginTop: space.sm }}>
+        <ListRow
+          icon={reminder ? 'notifications' : 'notifications-outline'}
+          title="Feed reminders"
+          subtitle={describeReminder(reminder)}
+          onPress={() => navigation.navigate('Reminders')}
+        />
+      </Card>
+      <Button title="Full schedule" icon="calendar" variant="secondary" onPress={() => navigation.navigate('FeedingScheduleSummary')} />
       <View style={s.actions}>
         <IconButton icon="image-outline" label="Save image" onPress={saveImage} />
         <IconButton icon="print-outline" label="Print" onPress={print} />
@@ -273,8 +298,6 @@ function MixStep({ n, title, detail, amount, done, onPress, reading }) {
     </Pressable>
   );
 }
-
-const formatL = (n) => String(Math.round(n * 10) / 10).replace('.', ',');
 
 const makeStyles = (t) =>
   StyleSheet.create({

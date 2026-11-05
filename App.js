@@ -1,7 +1,8 @@
 // App.js
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { View } from 'react-native';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme, createNavigationContainerRef } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,10 +31,26 @@ import SettingsScreen from './screens/SettingsScreen';
 import PreviousGrowsScreen from './screens/PreviousGrowsScreen';
 import AboutScreen from './screens/AboutScreen';
 import EasterEggScreen from './screens/EasterEggScreen';
+import RemindersScreen from './screens/RemindersScreen';
+import { rescheduleAllReminders } from './utils/reminders';
+import { getGrowByKey, setCurrentGrow } from './utils/growStore';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const Stack = createNativeStackNavigator();
+const navigationRef = createNavigationContainerRef();
+
+// Tapping a feed reminder opens that grow's weekly screen.
+async function openFromNotification(response) {
+  const growKey = response?.notification?.request?.content?.data?.growKey;
+  if (!growKey) return;
+  const grow = await getGrowByKey(growKey);
+  if (!grow) return;
+  await setCurrentGrow(grow);
+  if (navigationRef.isReady()) {
+    navigationRef.navigate('Main', { screen: 'Feeding Schedule', params: { refresh: Date.now() } });
+  }
+}
 const Tab = createBottomTabNavigator();
 
 const TAB_ICONS = {
@@ -89,8 +106,32 @@ function Root() {
     },
   };
 
+  useEffect(() => {
+    let sub;
+    try {
+      sub = Notifications.addNotificationResponseReceivedListener((r) => {
+        openFromNotification(r).catch(() => {});
+      });
+    } catch {
+      // notifications unavailable
+    }
+    return () => sub?.remove();
+  }, []);
+
+  const onReady = () => {
+    try {
+      const last = Notifications.getLastNotificationResponse();
+      if (last) {
+        Notifications.clearLastNotificationResponse();
+        openFromNotification(last).catch(() => {});
+      }
+    } catch {
+      // notifications unavailable (e.g. web preview)
+    }
+  };
+
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer theme={navTheme} ref={navigationRef} onReady={onReady}>
       <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: theme.bg } }}>
         <Stack.Screen name="Main" component={Tabs} />
         <Stack.Screen name="Create Grow BioBizz" component={CreateGrowBioBizz} />
@@ -103,6 +144,7 @@ function Root() {
         <Stack.Screen name="Previous Grows" component={PreviousGrowsScreen} />
         <Stack.Screen name="About" component={AboutScreen} />
         <Stack.Screen name="EasterEgg" component={EasterEggScreen} />
+        <Stack.Screen name="Reminders" component={RemindersScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
@@ -119,6 +161,11 @@ export default function App() {
   });
 
   const ready = fontsLoaded || !!fontError;
+
+  // Rebuild feed reminders on every launch so their text matches the current week.
+  useEffect(() => {
+    rescheduleAllReminders().catch(() => {});
+  }, []);
   const onLayout = useCallback(() => {
     if (ready) SplashScreen.hideAsync().catch(() => {});
   }, [ready]);

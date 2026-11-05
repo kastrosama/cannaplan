@@ -107,6 +107,30 @@ export const parseWater = (value) => {
 
 const fmt = (n) => String(Math.round(n * 100) / 100);
 
+// ---------- Units ----------
+// Everything is stored and calculated in litres. US mode only changes what is shown:
+// water in gallons and doses "per gallon". Totals stay in ml/g (how nutrients are measured).
+export const GAL = 3.78541;
+export const unitShort = (units) => (units === 'us' ? 'gal' : 'L');
+export const unitWord = (units) => (units === 'us' ? 'gallon' : 'litre');
+
+// "10 L" / "2,5 L" or "2.6 gal"
+export const formatWater = (litres, units = 'metric') => {
+  if (isNaN(litres)) return '—';
+  if (units === 'us') return `${Math.round((litres / GAL) * 10) / 10} gal`;
+  return `${String(Math.round(litres * 10) / 10).replace('.', ',')} L`;
+};
+
+// User input in the current unit -> litres (NaN if invalid)
+export const waterInputToLitres = (value, units = 'metric') => {
+  const n = parseWater(value);
+  return isNaN(n) ? NaN : units === 'us' ? Math.round(n * GAL * 1000) / 1000 : n;
+};
+
+// Litres -> the number to show in an input field for the current unit
+export const litresToInput = (litres, units = 'metric') =>
+  isNaN(litres) ? '' : units === 'us' ? String(Math.round((litres / GAL) * 10) / 10) : String(litres).replace('.', ',');
+
 /**
  * Turns any dose value the generators produce into something displayable.
  * Handles: 2, '2ml/L', '2.5 ml', '0.1 – 1 ml', '0.5g/L', '0.4 ml (1x per week)',
@@ -117,13 +141,16 @@ const fmt = (n) => String(Math.round(n * 100) / 100);
  *  - perL: text for the per-litre column
  *  - total: text for the total column (sprays are NOT added to the reservoir)
  */
-export const describeDose = (value, water) => {
+export const describeDose = (value, water, units = 'metric') => {
   const tot = (n) => `${fmt(Math.round(n * 10) / 10)}`;
   const noWater = isNaN(water);
+  const k = units === 'us' ? GAL : 1; // per-litre -> per-gallon
+  const per = (n) => (units === 'us' ? String(Math.round(n * k * 10) / 10) : fmt(n));
+  const short = unitShort(units);
 
   if (typeof value === 'number') {
     if (value === 0) return { skip: true };
-    return { perL: `${fmt(value)} ml`, total: noWater ? '—' : `${tot(value * water)} ml` };
+    return { perL: `${per(value)} ml`, total: noWater ? '—' : `${tot(value * water)} ml` };
   }
 
   const text = String(value ?? '').trim();
@@ -138,7 +165,7 @@ export const describeDose = (value, water) => {
     if (lower.startsWith('spray') || !nums.length) {
       return { perL: text.charAt(0).toUpperCase() + text.slice(1), total: 'Foliar only', spray: true };
     }
-    return { perL: `${fmt(nums[0])} ${unit}/L`, note: note, total: 'Foliar only', spray: true };
+    return { perL: `${per(nums[0])} ${unit}/${short}`, note: note, total: 'Foliar only', spray: true };
   }
 
   if (!nums.length) return { perL: text || '—', total: '—' };
@@ -147,17 +174,17 @@ export const describeDose = (value, water) => {
   if (isRange) {
     const [min, max] = nums;
     return {
-      perL: `${fmt(min)}–${fmt(max)} ${unit}`,
+      perL: `${per(min)}–${per(max)} ${unit}`,
       total: noWater ? '—' : `${tot(min * water)}–${tot(max * water)} ${unit}`,
     };
   }
 
   const n = nums[0];
-  return { perL: `${fmt(n)} ${unit}`, note, total: noWater ? '—' : `${tot(n * water)} ${unit}` };
+  return { perL: `${per(n)} ${unit}`, note, total: noWater ? '—' : `${tot(n * water)} ${unit}` };
 };
 
 // Nutrient rows for a week, ready to render. Readings (pH/EC/TDS) come last.
-export const getWeekRows = (week, water) => {
+export const getWeekRows = (week, water, units = 'metric') => {
   if (!week) return [];
   const entries = Object.entries(week).filter(([k]) => !META_KEYS.includes(k));
   const doses = [];
@@ -168,7 +195,7 @@ export const getWeekRows = (week, water) => {
     } else if (key === 'Water') {
       continue;
     } else {
-      const d = describeDose(val, water);
+      const d = describeDose(val, water, units);
       if (!d.skip) doses.push({ key, label: key.toUpperCase(), perL: d.perL, note: d.note, total: d.total, spray: !!d.spray });
     }
   }
@@ -196,8 +223,8 @@ const mixRank = (name) => {
 };
 
 // Rows sorted into a suggested mixing order (readings stay last).
-export const getMixingRows = (week, water) => {
-  const rows = getWeekRows(week, water);
+export const getMixingRows = (week, water, units = 'metric') => {
+  const rows = getWeekRows(week, water, units);
   const doses = rows.filter((r) => !r.reading && !r.spray);
   const sprays = rows.filter((r) => r.spray);
   const readings = rows.filter((r) => r.reading);

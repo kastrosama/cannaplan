@@ -9,7 +9,7 @@ import moment from 'moment';
 import { useTheme, useStyles, space, radius, fonts } from '../theme/theme';
 import { Screen, Header, Card, T, Button, ChipGroup, Field, Input, SectionTitle, BrandLogo } from '../components/ui';
 import { PLAGRON_LINES } from '../utils/charts/plagron';
-import { makeGrowKey, parseWater, getTotalWeeks } from '../utils/growHelpers';
+import { makeGrowKey, parseWater, getTotalWeeks, waterInputToLitres } from '../utils/growHelpers';
 import { brandById } from '../utils/brands';
 
 const SEED_TYPES = ['Feminized', 'Regular', 'Autoflower'];
@@ -59,7 +59,8 @@ const INTENSITIES = [
 ];
 
 export default function CreateGrowScreen({ navigation, nutrientBrand }) {
-  const { theme } = useTheme();
+  const { theme, units } = useTheme();
+  const isUS = units === 'us';
   const s = useStyles(makeStyles);
   const brand = brandById(nutrientBrand);
 
@@ -69,7 +70,7 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
   const [vegWeeks, setVegWeeks] = useState('');
   const [startDate, setStartDate] = useState(moment().format('YYYY-MM-DD'));
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [waterAmount, setWaterAmount] = useState('10');
+  const [waterAmount, setWaterAmount] = useState(units === 'us' ? '2' : '10');
 
   const [dutchProSubtype, setDutchProSubtype] = useState('');
   const [soilType, setSoilType] = useState('');
@@ -105,7 +106,7 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
     [nutrientBrand === 'GeneralHydroponics' && !!ghLine && !ghIntensity, 'feeding intensity'],
     [nutrientBrand === 'GeneralHydroponics' && !ghMedium, 'growing medium'],
     [nutrientBrand === 'Plagron' && !plagronLine, 'Plagron line'],
-    [isNaN(parseWater(waterAmount)), 'water amount'],
+    [isNaN(waterInputToLitres(waterAmount, units)), 'water amount'],
   ];
 
   const handleSave = async () => {
@@ -130,13 +131,14 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
       generalHydroponicsEnvironment: ghEnvironment,
       generalHydroponicsMedium: ghMedium,
       plagronLine,
-      waterAmount: String(parseWater(waterAmount)),
+      waterAmount: String(waterInputToLitres(waterAmount, units)), // always stored in litres
     };
 
     try {
-      await AsyncStorage.setItem('grow_current', JSON.stringify(data));
-      await AsyncStorage.setItem(makeGrowKey(data.strain, startDate), JSON.stringify(data));
-      navigation.navigate('Main', { screen: 'Feeding Schedule' });
+      const key = makeGrowKey(data.strain, startDate);
+      await AsyncStorage.setItem(key, JSON.stringify(data));
+      await AsyncStorage.setItem('grow_current', JSON.stringify({ key, ...data }));
+      navigation.navigate('Main', { screen: 'Feeding Schedule', params: { refresh: Date.now() } });
     } catch (e) {
       console.error('Failed to save grow data', e);
       setMissing(['(could not save, please try again)']);
@@ -292,11 +294,11 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
           />
         )}
 
-        <Field label="Water per feed (litres)" hint="Doses are worked out for this amount. You can change it later on the weekly screen.">
+        <Field label={`Water per feed (${isUS ? 'US gallons' : 'litres'})`} hint="Doses are worked out for this amount. You can change it later on the weekly screen.">
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={{ flex: 1 }}>
               <ChipGroup
-                options={WATER_PRESETS.map((w) => ({ label: `${w} L`, value: w }))}
+                options={(isUS ? ['1', '2', '5', '10'] : WATER_PRESETS).map((w) => ({ label: `${w} ${isUS ? 'gal' : 'L'}`, value: w }))}
                 value={waterAmount}
                 onChange={setWaterAmount}
               />
@@ -306,7 +308,7 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
             value={waterAmount}
             onChangeText={setWaterAmount}
             keyboardType="decimal-pad"
-            placeholder="Other amount, e.g. 7,5"
+            placeholder={isUS ? 'Other amount, e.g. 3.5' : 'Other amount, e.g. 7,5'}
             style={{ marginTop: space.sm }}
           />
         </Field>

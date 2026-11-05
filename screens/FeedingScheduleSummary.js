@@ -9,7 +9,7 @@ import moment from 'moment';
 
 import { useTheme, useStyles, space, radius, fonts } from '../theme/theme';
 import { Screen, Header, Card, T, IconButton, PhaseBadge, phaseColor } from '../components/ui';
-import { getGrowOverview, getMixingRows, getMediumLabel, parseWater } from '../utils/growHelpers';
+import { getGrowOverview, getMixingRows, getMediumLabel, parseWater, formatWater, unitShort } from '../utils/growHelpers';
 import { getCurrentGrow } from '../utils/growStore';
 import { brandName } from '../utils/brands';
 
@@ -21,7 +21,7 @@ const LEGEND = [
 ];
 
 export default function FeedingScheduleSummary({ navigation }) {
-  const { theme } = useTheme();
+  const { theme, units } = useTheme();
   const s = useStyles(makeStyles);
   const scrollRef = useRef();
   const shotRef = useRef();
@@ -59,7 +59,7 @@ export default function FeedingScheduleSummary({ navigation }) {
 
   const print = async () => {
     try {
-      await Print.printAsync({ html: schedulePrintHtml(grow) });
+      await Print.printAsync({ html: schedulePrintHtml(grow, units) });
     } catch (e) {
       console.error('Print failed:', e);
       Alert.alert('Error', 'Could not create the printout.');
@@ -110,12 +110,12 @@ export default function FeedingScheduleSummary({ navigation }) {
             {[brandName(grow.nutrients), getMediumLabel(grow), grow.type].filter(Boolean).join(' · ')}
           </T>
           <T variant="small" style={{ marginTop: 3 }}>
-            Started {moment(grow.startDate).format('D MMM YYYY')} · {isNaN(water) ? '—' : `${water} L`} per feed
+            Started {moment(grow.startDate).format('D MMM YYYY')} · {formatWater(water, units)} per feed
           </T>
         </Card>
 
         {o.schedule.map((w) => {
-          const mix = getMixingRows(w, water);
+          const mix = getMixingRows(w, water, units);
           const isNow = w.week === o.week;
           const isPast = w.week < o.week;
           return (
@@ -143,7 +143,7 @@ export default function FeedingScheduleSummary({ navigation }) {
                       <View key={r.key} style={s.row}>
                         <View style={{ flex: 1, paddingRight: space.md }}>
                           <T variant="body" numberOfLines={1}>{r.key}</T>
-                          <T variant="small">{r.perL}/L{r.note ? ` · ${r.note}` : ''}</T>
+                          <T variant="small">{r.perL}/{unitShort(units)}{r.note ? ` · ${r.note}` : ''}</T>
                         </View>
                         <T variant="heading" style={s.total}>{r.total}</T>
                       </View>

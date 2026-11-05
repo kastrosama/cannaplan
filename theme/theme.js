@@ -6,6 +6,7 @@ import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SETTINGS_KEY = 'settings_theme';
+const UNITS_KEY = 'settings_units';
 
 const phaseDark = {
   veg: '#5FBF77',
@@ -74,17 +75,29 @@ const ThemeContext = createContext({
   theme: palettes.dark,
   preference: 'dark',
   setPreference: () => {},
+  units: 'metric',
+  setUnits: () => {},
 });
 
 export function ThemeProvider({ children }) {
   const system = useColorScheme();
   const [preference, setPref] = useState('dark'); // 'dark' | 'light' | 'system'
 
+  const [units, setUnitsState] = useState('metric'); // 'metric' | 'us'
+
   useEffect(() => {
-    AsyncStorage.getItem(SETTINGS_KEY)
-      .then((v) => v && setPref(v))
+    AsyncStorage.multiGet([SETTINGS_KEY, UNITS_KEY])
+      .then(([[, t], [, u]]) => {
+        if (t) setPref(t);
+        if (u) setUnitsState(u);
+      })
       .catch(() => {});
   }, []);
+
+  const setUnits = (value) => {
+    setUnitsState(value);
+    return AsyncStorage.setItem(UNITS_KEY, value).catch(() => {});
+  };
 
   const setPreference = (value) => {
     setPref(value);
@@ -93,8 +106,8 @@ export function ThemeProvider({ children }) {
 
   const resolved = preference === 'system' ? (system === 'light' ? 'light' : 'dark') : preference;
   const value = useMemo(
-    () => ({ theme: palettes[resolved], preference, setPreference }),
-    [resolved, preference]
+    () => ({ theme: palettes[resolved], preference, setPreference, units, setUnits }),
+    [resolved, preference, units]
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

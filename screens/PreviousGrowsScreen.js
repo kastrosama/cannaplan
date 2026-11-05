@@ -8,6 +8,7 @@ import moment from 'moment';
 import { useTheme, useStyles, space } from '../theme/theme';
 import { Screen, Header, Card, T, Button, PhaseBadge, EmptyState } from '../components/ui';
 import { loadAllGrows, setCurrentGrow, deleteGrows } from '../utils/growStore';
+import { removeReminderConfigs } from '../utils/reminders';
 import { getGrowOverview, getMediumLabel } from '../utils/growHelpers';
 import { brandName } from '../utils/brands';
 
@@ -32,7 +33,7 @@ export default function PreviousGrowsScreen({ navigation }) {
 
   const open = async (g) => {
     await setCurrentGrow(g);
-    navigation.navigate('Main', { screen: 'Feeding Schedule' });
+    navigation.navigate('Main', { screen: 'Feeding Schedule', params: { refresh: Date.now() } });
   };
 
   const confirmDelete = () => {
@@ -47,6 +48,7 @@ export default function PreviousGrowsScreen({ navigation }) {
           onPress: async () => {
             try {
               await deleteGrows(selectedKeys);
+              await removeReminderConfigs(selectedKeys);
               setSelected({});
               await load();
             } catch {

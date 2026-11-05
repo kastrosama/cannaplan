@@ -3,7 +3,7 @@
 // uses little ink and paginates cleanly on A4/Letter.
 
 import moment from 'moment';
-import { getGrowOverview, getMixingRows, getWeekRange, getMediumLabel, parseWater } from './growHelpers';
+import { getGrowOverview, getMixingRows, getWeekRange, getMediumLabel, parseWater, formatWater, unitWord, unitShort } from './growHelpers';
 import { brandName } from './brands';
 
 const PHASE = { veg: '#2F8A48', flower: '#B86E0C', flush: '#2476B0', harvest: '#85603C' };
@@ -15,7 +15,6 @@ const esc = (v) =>
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 
-const litres = (w) => (isNaN(w) ? '—' : `${String(Math.round(w * 10) / 10).replace('.', ',')} L`);
 
 const page = (title, body) => `<!doctype html>
 <html><head><meta charset="utf-8"><title>${esc(title)}</title>
@@ -60,7 +59,8 @@ const header = (grow, title) => `
   </div>`;
 
 // One week, as a tick-off mixing checklist.
-export function weekPrintHtml(grow, water) {
+export function weekPrintHtml(grow, water, units = 'metric') {
+  const litres = (w) => formatWater(w, units);
   const o = getGrowOverview(grow);
   const w = o.current;
   const L = isNaN(water) ? parseWater(grow.waterAmount) : water;
@@ -85,7 +85,7 @@ export function weekPrintHtml(grow, water) {
     return page('CannaPlan', body);
   }
 
-  const mix = getMixingRows(w, L);
+  const mix = getMixingRows(w, L, units);
   let n = 1;
   const rows = [];
   rows.push(`<tr><td class="box"><span></span></td><td class="n">${n++}</td><td><b>Fill with ${litres(L)} of water</b><div class="muted">Room temperature, ideally rested</div></td><td class="r"></td></tr>`);
@@ -93,7 +93,7 @@ export function weekPrintHtml(grow, water) {
     rows.push(`<tr><td class="box"><span></span></td><td class="n">${n++}</td><td><b>Water only, no nutrients</b><div class="muted">Flush week</div></td><td class="r"></td></tr>`);
   } else {
     for (const r of mix.doses) {
-      rows.push(`<tr><td class="box"><span></span></td><td class="n">${n++}</td><td><b>${esc(r.key)}</b><div class="muted">${esc(r.perL)} per litre${r.note ? ` · ${esc(r.note)}` : ''}</div></td><td class="r amt">${esc(r.total)}</td></tr>`);
+      rows.push(`<tr><td class="box"><span></span></td><td class="n">${n++}</td><td><b>${esc(r.key)}</b><div class="muted">${esc(r.perL)} per ${unitWord(units)}${r.note ? ` · ${esc(r.note)}` : ''}</div></td><td class="r amt">${esc(r.total)}</td></tr>`);
     }
   }
   for (const r of mix.readings) {
@@ -114,7 +114,8 @@ export function weekPrintHtml(grow, water) {
 }
 
 // The whole grow, one compact block per week.
-export function schedulePrintHtml(grow) {
+export function schedulePrintHtml(grow, units = 'metric') {
+  const litres = (w) => formatWater(w, units);
   const o = getGrowOverview(grow);
   const L = parseWater(grow.waterAmount);
   let body = header(grow, 'Feeding schedule');
@@ -125,7 +126,7 @@ export function schedulePrintHtml(grow) {
     </div>`;
 
   for (const w of o.schedule) {
-    const mix = getMixingRows(w, L);
+    const mix = getMixingRows(w, L, units);
     const isNow = w.week === o.week;
     const date = moment(grow.startDate).add(w.week - 1, 'weeks').format('D MMM');
     let rows = '';
@@ -133,7 +134,7 @@ export function schedulePrintHtml(grow) {
     else if (w.kind === 'harvest') rows = `<tr><td colspan="3">No feeding · harvest, dry and cure</td></tr>`;
     else
       rows = mix.doses
-        .map((r) => `<tr><td>${esc(r.key)}</td><td class="muted r">${esc(r.perL)}/L</td><td class="r"><b>${esc(r.total)}</b></td></tr>`)
+        .map((r) => `<tr><td>${esc(r.key)}</td><td class="muted r">${esc(r.perL)}/${unitShort(units)}</td><td class="r"><b>${esc(r.total)}</b></td></tr>`)
         .join('');
     rows += mix.sprays
       .map((r) => `<tr><td>${esc(r.key)} <span class="muted">(foliar)</span></td><td class="muted r" colspan="2">${esc([r.perL, r.note].filter(Boolean).join(' · '))}</td></tr>`)

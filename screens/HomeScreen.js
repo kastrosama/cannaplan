@@ -41,7 +41,7 @@ export default function HomeScreen({ navigation }) {
 
   const openGrow = async (grow) => {
     await setCurrentGrow(grow);
-    navigation.navigate('Feeding Schedule');
+    navigation.navigate('Feeding Schedule', { refresh: Date.now() });
   };
 
   const active = (grows || []).filter((g) => g.overview.status === 'active');
