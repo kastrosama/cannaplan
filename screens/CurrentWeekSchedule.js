@@ -194,7 +194,7 @@ export default function CurrentWeekSchedule({ navigation, route }) {
                       key={r.key}
                       n={step++}
                       title={r.key}
-                      detail={`${r.perL} per ${per}${r.note ? ` · ${r.note}` : ''}`}
+                      detail={r.text ? r.perL : `${r.perL} per ${per}${r.note ? ` · ${r.note}` : ''}`}
                       amount={r.total}
                       done={done[r.key]}
                       onPress={() => toggle(r.key)}

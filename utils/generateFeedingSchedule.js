@@ -1,4 +1,4 @@
-import { generateBioBizzSchedule } from './generateBioBizzSchedule';
+import { generateBioBizzSchedule } from './charts/biobizz';
 import { generateDutchProSchedule } from './generateDutchProSchedule';
 import { generateAdvancedNutrientsSchedule } from './generateAdvancedNutrientsSchedule';
 import { generateCannaSchedule } from './generateCannaSchedule';

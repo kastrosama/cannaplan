@@ -168,7 +168,7 @@ export const describeDose = (value, water, units = 'metric') => {
     return { perL: `${per(nums[0])} ${unit}/${short}`, note: note, total: 'Foliar only', spray: true };
   }
 
-  if (!nums.length) return { perL: text || '—', total: '—' };
+  if (!nums.length) return { perL: text || '—', total: '', text: true };
   if (!isRange && nums[0] === 0) return { skip: true };
 
   if (isRange) {
@@ -196,7 +196,7 @@ export const getWeekRows = (week, water, units = 'metric') => {
       continue;
     } else {
       const d = describeDose(val, water, units);
-      if (!d.skip) doses.push({ key, label: key.toUpperCase(), perL: d.perL, note: d.note, total: d.total, spray: !!d.spray });
+      if (!d.skip) doses.push({ key, label: key.toUpperCase(), perL: d.perL, note: d.note, total: d.total, spray: !!d.spray, text: !!d.text });
     }
   }
   return [...doses, ...readings];
@@ -215,7 +215,7 @@ const mixRank = (name) => {
   const n = name.toLowerCase();
   if (n.includes('silica') || n.includes('silicon')) return 0;
   if (/cal[\s·-]?mag|camg|calimagic/.test(n)) return 1;
-  if (n.includes('micro')) return 2;
+  if (n.includes('micro') && !n.includes('microbe')) return 2; // FloraMicro etc., not BioBizz Microbes
   if (/\ba$/.test(n)) return 3;
   if (/\bb$/.test(n)) return 4;
   if (/^(bio·grow|bio·bloom|fish·mix|flora(gro|bloom)|floranova|maxi(gro|bloom)|biothrive|iguana juice|alga (grow|bloom)|cocos |hydro (a|b)$|terra |aqua |substra |grow$|bloom$)/.test(n)) return 3.5;

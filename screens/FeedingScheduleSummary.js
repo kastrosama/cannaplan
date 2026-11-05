@@ -143,7 +143,7 @@ export default function FeedingScheduleSummary({ navigation }) {
                       <View key={r.key} style={s.row}>
                         <View style={{ flex: 1, paddingRight: space.md }}>
                           <T variant="body" numberOfLines={1}>{r.key}</T>
-                          <T variant="small">{r.perL}/{unitShort(units)}{r.note ? ` · ${r.note}` : ''}</T>
+                          <T variant="small">{r.text ? r.perL : `${r.perL}/${unitShort(units)}`}{r.note ? ` · ${r.note}` : ''}</T>
                         </View>
                         <T variant="heading" style={s.total}>{r.total}</T>
                       </View>

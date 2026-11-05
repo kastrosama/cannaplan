@@ -25,7 +25,17 @@ const DUTCHPRO_TYPES = [
   'Hydro / Coco - Hard Water',
   'Hydro / Coco - RO / Soft Water',
 ];
-const BIOBIZZ_SOILS = ['Light-Mix', 'All-Mix', 'Coco'];
+const BIOBIZZ_SOIL_OPTIONS = [
+  { label: 'Light·Mix', value: 'Light-Mix' },
+  { label: 'All·Mix', value: 'All-Mix' },
+  { label: 'Coco·Mix', value: 'Coco' },
+  { label: 'Light·Mix Peat Free', value: 'Light-Mix Peat Free' },
+  { label: 'All·Mix Peat Free', value: 'All-Mix Peat Free' },
+];
+const YES_NO = [
+  { label: 'No', value: 'no' },
+  { label: 'Yes', value: 'yes' },
+];
 const AN_MEDIUMS = ['Soil – Organic', 'Soil – Light Mix', 'Coco Coir', 'Hydroponics', 'Outdoor'];
 const AN_LINES = {
   'Soil – Organic': ['OG Organics (Iguana Juice)'],
@@ -74,6 +84,9 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
 
   const [dutchProSubtype, setDutchProSubtype] = useState('');
   const [soilType, setSoilType] = useState('');
+  const [bioBizzVegFeed, setBioBizzVegFeed] = useState('Fish·Mix');
+  const [bioBizzMicrobes, setBioBizzMicrobes] = useState('no');
+  const [bioBizzSoftWater, setBioBizzSoftWater] = useState('no');
   const [anMedium, setAnMedium] = useState('');
   const [anLine, setAnLine] = useState('');
   const [cannaMedium, setCannaMedium] = useState('');
@@ -123,6 +136,13 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
       nutrients: nutrientBrand,
       dutchProSubtype,
       soilType,
+      ...(nutrientBrand === 'BioBizz'
+        ? {
+            bioBizzVegFeed,
+            bioBizzMicrobes: bioBizzMicrobes === 'yes',
+            bioBizzSoftWater: bioBizzSoftWater === 'yes',
+          }
+        : {}),
       advancedNutrientsSubtype: anMedium,
       advancedNutrientsLine: anLine,
       cannaMedium,
@@ -195,7 +215,22 @@ export default function CreateGrowScreen({ navigation, nutrientBrand }) {
       <Card>
         {nutrientBrand === 'BioBizz' && (
           <Field label="Soil type">
-            <ChipGroup options={BIOBIZZ_SOILS} value={soilType} onChange={setSoilType} />
+            <ChipGroup options={BIOBIZZ_SOIL_OPTIONS} value={soilType} onChange={setSoilType} />
+          </Field>
+        )}
+        {nutrientBrand === 'BioBizz' && (
+          <Field label="Veg feed" hint="They do the same job, so use one. Flowering always uses Bio·Grow.">
+            <ChipGroup options={['Fish·Mix', 'Bio·Grow']} value={bioBizzVegFeed} onChange={setBioBizzVegFeed} />
+          </Field>
+        )}
+        {nutrientBrand === 'BioBizz' && (
+          <Field label="Do you use BioBizz Microbes?" hint="Optional. Applied once a week.">
+            <ChipGroup options={YES_NO} value={bioBizzMicrobes} onChange={setBioBizzMicrobes} />
+          </Field>
+        )}
+        {nutrientBrand === 'BioBizz' && (
+          <Field label="Soft or RO water?" hint="BioBizz recommends adding CalMag with soft or RO water.">
+            <ChipGroup options={YES_NO} value={bioBizzSoftWater} onChange={setBioBizzSoftWater} />
           </Field>
         )}
 

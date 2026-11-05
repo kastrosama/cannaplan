@@ -93,7 +93,7 @@ export function weekPrintHtml(grow, water, units = 'metric') {
     rows.push(`<tr><td class="box"><span></span></td><td class="n">${n++}</td><td><b>Water only, no nutrients</b><div class="muted">Flush week</div></td><td class="r"></td></tr>`);
   } else {
     for (const r of mix.doses) {
-      rows.push(`<tr><td class="box"><span></span></td><td class="n">${n++}</td><td><b>${esc(r.key)}</b><div class="muted">${esc(r.perL)} per ${unitWord(units)}${r.note ? ` · ${esc(r.note)}` : ''}</div></td><td class="r amt">${esc(r.total)}</td></tr>`);
+      rows.push(`<tr><td class="box"><span></span></td><td class="n">${n++}</td><td><b>${esc(r.key)}</b><div class="muted">${r.text ? esc(r.perL) : `${esc(r.perL)} per ${unitWord(units)}`}${r.note ? ` · ${esc(r.note)}` : ''}</div></td><td class="r amt">${esc(r.total)}</td></tr>`);
     }
   }
   for (const r of mix.readings) {
@@ -134,7 +134,7 @@ export function schedulePrintHtml(grow, units = 'metric') {
     else if (w.kind === 'harvest') rows = `<tr><td colspan="3">No feeding · harvest, dry and cure</td></tr>`;
     else
       rows = mix.doses
-        .map((r) => `<tr><td>${esc(r.key)}</td><td class="muted r">${esc(r.perL)}/${unitShort(units)}</td><td class="r"><b>${esc(r.total)}</b></td></tr>`)
+        .map((r) => `<tr><td>${esc(r.key)}</td><td class="muted r">${r.text ? esc(r.perL) : `${esc(r.perL)}/${unitShort(units)}`}</td><td class="r"><b>${esc(r.total)}</b></td></tr>`)
         .join('');
     rows += mix.sprays
       .map((r) => `<tr><td>${esc(r.key)} <span class="muted">(foliar)</span></td><td class="muted r" colspan="2">${esc([r.perL, r.note].filter(Boolean).join(' · '))}</td></tr>`)
