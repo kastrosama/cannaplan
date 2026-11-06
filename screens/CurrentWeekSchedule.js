@@ -222,8 +222,10 @@ export default function CurrentWeekSchedule({ navigation, route }) {
                   {mix.sprays.map((r) => (
                     <View key={r.key} style={s.sprayRow}>
                       <Ionicons name="water-outline" size={18} color={theme.phase.flush} style={{ marginRight: 10 }} />
-                      <T variant="body" style={{ flex: 1 }}>{r.key}</T>
-                      <T variant="small">{[r.perL, r.note].filter(Boolean).join(' · ')}</T>
+                      <View style={{ flex: 1 }}>
+                        <T variant="body">{r.key}</T>
+                        <T variant="small" style={{ marginTop: 2 }}>{[r.perL, r.note].filter(Boolean).join(' · ')}</T>
+                      </View>
                     </View>
                   ))}
                 </Card>
@@ -336,7 +338,7 @@ const makeStyles = (t) =>
       marginRight: space.md,
     },
     doneText: { opacity: 0.45, textDecorationLine: 'line-through' },
-    sprayRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
+    sprayRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 6 },
     note: { textAlign: 'center', marginTop: space.xs, marginBottom: space.md, paddingHorizontal: space.lg },
     actions: { flexDirection: 'row', marginTop: space.md, marginHorizontal: -4 },
   });

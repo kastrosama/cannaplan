@@ -152,10 +152,9 @@ export default function FeedingScheduleSummary({ navigation }) {
                 {mix.sprays.map((r) => (
                   <View key={r.key} style={s.row}>
                     <View style={{ flex: 1, paddingRight: space.md }}>
-                      <T variant="body" numberOfLines={1}>{r.key}</T>
-                      <T variant="small">Foliar spray · separate bottle</T>
+                      <T variant="body">{r.key}</T>
+                      <T variant="small">Foliar spray · {[r.perL, r.note].filter(Boolean).join(' · ')}</T>
                     </View>
-                    <T variant="small" style={s.total}>{[r.perL, r.note].filter(Boolean).join(' · ')}</T>
                   </View>
                 ))}
                 {mix.readings.length ? (
